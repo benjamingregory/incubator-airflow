@@ -195,10 +195,10 @@ auth_backend = airflow.api.auth.backend.default
 # The default owner assigned to each new operator, unless
 # provided explicitly or passed via `default_args`
 default_owner = Airflow
-default_cpus = 1
+default_cpu = 1
 default_ram = 512
 default_disk = 512
-default_gpus = 0
+default_gpu = 0
 
 
 [webserver]

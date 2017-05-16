@@ -75,7 +75,7 @@ from airflow.utils.email import send_email
 from airflow.utils.helpers import (
     as_tuple, is_container, is_in, validate_key, pprinttable)
 from airflow.utils.logging import LoggingMixin
-from airflow.utils.operator_resources import Resources
+from airflow.utils.operator_resources import ResourceSet
 from airflow.utils.state import State
 from airflow.utils.timeout import timeout
 from airflow.utils.trigger_rule import TriggerRule
@@ -1878,9 +1878,8 @@ class BaseOperator(object):
         using the constants defined in the static class
         ``airflow.utils.TriggerRule``
     :type trigger_rule: str
-    :param resources: A map of resource parameter names (the argument names of the
-        Resources constructor) to their values.
-    :type resources: dict
+    :param resources: Resources that describe constraints for the task run
+    :type resources: ResourceSet or Dict
     :param run_as_user: unix username to impersonate while running the task
     :type run_as_user: str
     """
@@ -1987,7 +1986,7 @@ class BaseOperator(object):
         self.params = params or {}  # Available in templates!
         self.adhoc = adhoc
         self.priority_weight = priority_weight
-        self.resources = Resources(**(resources or {}))
+        self.resources = ResourceSet(resources or {})
         self.run_as_user = run_as_user
 
         # Private attributes
@@ -3819,7 +3818,7 @@ class DagStat(Base):
         """
         :param dag_id: the dag_id to mark dirty
         :param session: database session
-        :return: 
+        :return:
         """
         DagStat.create(dag_id=dag_id, session=session)
 
@@ -3896,11 +3895,11 @@ class DagStat(Base):
     @provide_session
     def create(dag_id, session=None):
         """
-        Creates the missing states the stats table for the dag specified 
-        
+        Creates the missing states the stats table for the dag specified
+
         :param dag_id: dag id of the dag to create stats for
         :param session: database session
-        :return: 
+        :return:
         """
         # unfortunately sqlalchemy does not know upsert
         qry = session.query(DagStat).filter(DagStat.dag_id == dag_id).all()
@@ -4010,7 +4009,7 @@ class DagRun(Base):
         :type state: State
         :param external_trigger: whether this dag run is externally triggered
         :type external_trigger: bool
-        :param no_backfills: return no backfills (True), return all (False). 
+        :param no_backfills: return no backfills (True), return all (False).
         Defaults to False
         :type no_backfills: bool
         :param session: database session
