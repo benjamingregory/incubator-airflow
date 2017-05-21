@@ -95,9 +95,10 @@ class ResourceSet(Set):
             elif isinstance(arg, dict):
                 self.add_from_dict(arg)
                 pass
-            elif not isinstance(arg, (CPU, GPU, RAM, Disk)):
+            elif isinstance(arg, (CPU, GPU, RAM, Disk)):
+                self.add_resource(arg.__class__.__name__.lower(), arg)
+            else:
                 raise AirflowException('only args of type CPU, RAM, GPU, and Disk are allowed as positional arguments')
-            self.add_resource(arg.__class__.__name__.lower(), arg)
         self.add_from_dict(kwargs)
         self.apply_defaults()
 
@@ -152,3 +153,9 @@ class ResourceSet(Set):
 
     def __contains__(self, value):
         return value in self._resources
+
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)

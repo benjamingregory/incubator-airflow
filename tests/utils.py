@@ -132,6 +132,15 @@ class ResourceSetTest(unittest.TestCase):
         self.assertEqual(resource_set.cpu.value, 5)
         self.assertEqual(resource_set.ram.value, 6)
 
+    def test_resource_set_from_dict_len(self):
+        resources = {
+                'cpu': 5,
+                'ram': 6,
+                'disk': 512
+        }
+        resource_set = ResourceSet(resources)
+        self.assertEqual(len(resource_set), 4)
+
     def test_resource_set_is_iterable(self):
         resources = ResourceSet()
         self.assertEqual(len(resources), 4)
