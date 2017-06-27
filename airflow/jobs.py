@@ -734,8 +734,10 @@ class SchedulerJob(BaseJob):
                 external_trigger=False,
                 session=session
             )
+            self.logger.info("dag.max_active_runs: {}".format(dag.max_active_runs))
             # return if already reached maximum active runs and no timeout setting
             if len(active_runs) >= dag.max_active_runs and not dag.dagrun_timeout:
+                self.logger.info("already reached maximum active runs")
                 return
             timedout_runs = 0
             for dr in active_runs:
@@ -746,7 +748,11 @@ class SchedulerJob(BaseJob):
                     dr.end_date = datetime.now()
                     timedout_runs += 1
             session.commit()
+            self.logger.info("active_runs: {}".format(active_runs))
+            self.logger.info("timedout_runs: {}".format(timedout_runs))
+            self.logger.info("dag.max_active_runs: {}".format(dag.max_active_runs))
             if len(active_runs) - timedout_runs >= dag.max_active_runs:
+                self.logger.info("len(active_runs) - timedout_runs >= dag.max_active_runs: true")
                 return
 
             # this query should be replaced by find dagrun
@@ -812,8 +818,11 @@ class SchedulerJob(BaseJob):
                 self.logger.debug("Dag start date: {}. Next run date: {}"
                                   .format(dag.start_date, next_run_date))
 
+            self.logger.info("next_run_date: {}".format(next_run_date))
+            self.logger.info("datetime.now(): {}".format(datetime.now()))
             # don't ever schedule in the future
             if next_run_date > datetime.now():
+                self.logger.info("not scheduling dag in the future")
                 return
 
             # this structure is necessary to avoid a TypeError from concatenating
@@ -823,8 +832,11 @@ class SchedulerJob(BaseJob):
             elif next_run_date:
                 period_end = dag.following_schedule(next_run_date)
 
+            self.logger.info("next_run_date: {}".format(next_run_date))
+            self.logger.info("dag.end_date: {}".format(dag.end_date))
             # Don't schedule a dag beyond its end_date (as specified by the dag param)
             if next_run_date and dag.end_date and next_run_date > dag.end_date:
+                self.logger.info("not scheduling dag beyond end_date")
                 return
 
             # Don't schedule a dag beyond its end_date (as specified by the task params)
@@ -835,8 +847,12 @@ class SchedulerJob(BaseJob):
                 min_task_end_date = min(task_end_dates)
             if next_run_date and min_task_end_date and next_run_date > min_task_end_date:
                 return
-
-            if next_run_date and period_end and period_end <= datetime.now():
+            self.logger.info("next_run_date: {}".format(next_run_date))
+            self.logger.info("period_end: {}".format(period_end))
+            n = datetime.now()
+            self.logger.info("n: {}".format(n))
+            if next_run_date and period_end and period_end <= n:
+                self.logger.info("creating dagrun")
                 next_run = dag.create_dagrun(
                     run_id='scheduled__' + next_run_date.isoformat(),
                     execution_date=next_run_date,
@@ -845,6 +861,8 @@ class SchedulerJob(BaseJob):
                     external_trigger=False
                 )
                 return next_run
+            else:
+                self.logger.info("less than")
 
     def _process_task_instances(self, dag, queue):
         """
