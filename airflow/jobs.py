@@ -851,7 +851,7 @@ class SchedulerJob(BaseJob):
             self.logger.info("period_end: {}".format(period_end))
             n = datetime.now()
             self.logger.info("n: {}".format(n))
-            if next_run_date and period_end and period_end <= n:
+            if next_run_date and period_end and period_end >= n:
                 self.logger.info("creating dagrun")
                 next_run = dag.create_dagrun(
                     run_id='scheduled__' + next_run_date.isoformat(),
