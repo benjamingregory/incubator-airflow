@@ -94,6 +94,7 @@ class BaseExecutor(LoggingMixin):
 
     def heartbeat(self):
 
+        self.logger.info("start BaseExecutor heartbeat")
         # Triggering new jobs
         if not self.parallelism:
             open_slots = len(self.queued_tasks)
@@ -130,6 +131,7 @@ class BaseExecutor(LoggingMixin):
         # Calling child class sync method
         self.logger.debug("Calling the {} sync method".format(self.__class__))
         self.sync()
+        self.logger.info("end BaseExecutor heartbeat")
 
     def change_state(self, key, state):
         self.running.pop(key)

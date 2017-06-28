@@ -1462,10 +1462,14 @@ class SchedulerJob(BaseJob):
 
             # Call hearbeats
             self.logger.info("Heartbeating the executor")
+            self.logger.info("start Heartbeating the executor")
             self.executor.heartbeat()
+            self.logger.info("done Heartbeating the executor")
 
             # Process events from the executor
+            self.logger.info("start processing event from executor")
             self._process_executor_events()
+            self.logger.info("done processing event from executor")
 
             # Heartbeat the scheduler periodically
             time_since_last_heartbeat = (datetime.now() -
