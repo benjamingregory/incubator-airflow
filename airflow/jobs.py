@@ -1425,8 +1425,9 @@ class SchedulerJob(BaseJob):
                 self.clear_nonexistent_import_errors(known_file_paths=known_file_paths)
 
             # Kick of new processes and collect results from finished ones
-            self.logger.info("Heartbeating the process manager")
+            self.logger.info("start Heartbeating the process manager")
             simple_dags = processor_manager.heartbeat()
+            self.logger.info("finish Heartbeating the process manager")
 
             if self.using_sqlite:
                 # For the sqlite case w/ 1 thread, wait until the processor
@@ -1482,15 +1483,18 @@ class SchedulerJob(BaseJob):
             # Occasionally print out stats about how fast the files are getting processed
             if ((datetime.now() - last_stat_print_time).total_seconds() >
                     self.print_stats_interval):
+                self.logger.info("printing out stats")
                 if len(known_file_paths) > 0:
+                    self.logger.info("known_file_paths > 0")
                     self._log_file_processing_stats(known_file_paths,
                                                     processor_manager)
+                    self.logger.info("after self._log_file_processing_stats")
                 last_stat_print_time = datetime.now()
 
             loop_end_time = time.time()
-            self.logger.debug("Ran scheduling loop in {:.2f}s"
+            self.logger.info("Ran scheduling loop in {:.2f}s"
                               .format(loop_end_time - loop_start_time))
-            self.logger.debug("Sleeping for {:.2f}s"
+            self.logger.info("Sleeping for {:.2f}s"
                               .format(self._processor_poll_interval))
             time.sleep(self._processor_poll_interval)
 
@@ -1500,6 +1504,7 @@ class SchedulerJob(BaseJob):
                                  "{} times".format(self.num_runs))
                 break
 
+        self.logger.info("after processing loop")
         # Stop any processors
         processor_manager.terminate()
 

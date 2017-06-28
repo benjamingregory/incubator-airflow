@@ -93,7 +93,6 @@ class BaseExecutor(LoggingMixin):
         pass
 
     def heartbeat(self):
-
         self.logger.info("start BaseExecutor heartbeat")
         # Triggering new jobs
         if not self.parallelism:
