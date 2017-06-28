@@ -830,7 +830,7 @@ class SchedulerJob(BaseJob):
             if dag.schedule_interval == '@once':
                 period_end = next_run_date
             elif next_run_date:
-                period_end = dag.following_schedule(next_run_date)
+                period_end = dag.following_schedule(None)
 
             self.logger.info("next_run_date: {}".format(next_run_date))
             self.logger.info("dag.end_date: {}".format(dag.end_date))
