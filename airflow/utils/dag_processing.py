@@ -549,6 +549,7 @@ class DagFileProcessorManager(LoggingMixin):
         have finished since the last time this was called
         :rtype: list[SimpleDag]
         """
+        self.logger.info("start BaseExecutor heartbeat")
         finished_processors = {}
         """:type : dict[unicode, AbstractDagFileProcessor]"""
         running_processors = {}
@@ -605,11 +606,11 @@ class DagFileProcessorManager(LoggingMixin):
                                         set(files_paths_at_run_limit))
 
             for file_path, processor in self._processors.items():
-                self.logger.debug("File path {} is still being processed (started: {})"
+                self.logger.info("File path {} is still being processed (started: {})"
                                   .format(processor.file_path,
                                           processor.start_time.isoformat()))
 
-            self.logger.debug("Queuing the following files for processing:\n\t{}"
+            self.logger.info("Queuing the following files for processing:\n\t{}"
                               .format("\n\t".join(files_paths_to_queue)))
 
             self._file_path_queue.extend(files_paths_to_queue)
