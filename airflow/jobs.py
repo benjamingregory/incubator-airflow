@@ -846,12 +846,13 @@ class SchedulerJob(BaseJob):
             if task_end_dates:
                 min_task_end_date = min(task_end_dates)
             if next_run_date and min_task_end_date and next_run_date > min_task_end_date:
+                self.logger.info("next_run_date > min_task_end_date ---- {} > {}".format(next_run_date, min_task_end_date))
                 return
             self.logger.info("next_run_date: {}".format(next_run_date))
             self.logger.info("period_end: {}".format(period_end))
             n = datetime.now()
             self.logger.info("n: {}".format(n))
-            if next_run_date and period_end and period_end >= n:
+            if next_run_date and period_end and period_end <= n:
                 self.logger.info("creating dagrun")
                 next_run = dag.create_dagrun(
                     run_id='scheduled__' + next_run_date.isoformat(),
@@ -862,7 +863,7 @@ class SchedulerJob(BaseJob):
                 )
                 return next_run
             else:
-                self.logger.info("less than")
+                self.logger.info("period_end: {} greater than n: {}".format(period_end, n))
 
     def _process_task_instances(self, dag, queue):
         """
