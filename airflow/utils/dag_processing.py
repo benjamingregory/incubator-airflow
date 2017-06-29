@@ -557,6 +557,7 @@ class DagFileProcessorManager(LoggingMixin):
 
         self.logger.info("before DagFileProcessorManager for loop 1")
         for file_path, processor in self._processors.items():
+            self.logger.info("file_path, processor == {}, {}".format(file_path, processor))
             if processor.done:
                 self.logger.info("Processor for {} finished".format(file_path))
                 now = datetime.now()
