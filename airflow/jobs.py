@@ -438,7 +438,7 @@ class DagFileProcessor(AbstractDagFileProcessor):
             self._done = True
             logging.info("Waiting for %s", self._process)
             logging.info("processor before self._process.join() 1")
-            self._process.join()
+            self._process.join(5)
             logging.info("processor after self._process.join() 1")
             return True
 
