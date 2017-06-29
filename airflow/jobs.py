@@ -422,29 +422,43 @@ class DagFileProcessor(AbstractDagFileProcessor):
         :return: whether the process is finished running
         :rtype: bool
         """
+        logging.info("processor done start")
         if self._process is None:
             raise AirflowException("Tried to see if it's done before starting!")
 
         if self._done:
+            logging.info("processor done True")
             return True
 
+        logging.info("processor before self._result_queue.empty()")
         if not self._result_queue.empty():
+            logging.info("processor before self._result_queue.get_nowait()")
             self._result = self._result_queue.get_nowait()
+            logging.info("processor after self._result_queue.get_nowait()")
             self._done = True
-            logging.debug("Waiting for %s", self._process)
+            logging.info("Waiting for %s", self._process)
+            logging.info("processor before self._process.join() 1")
             self._process.join()
+            logging.info("processor after self._process.join() 1")
             return True
 
+        logging.info("processor before self._process.is_alive()")
         # Potential error case when process dies
         if not self._process.is_alive():
             self._done = True
             # Get the object from the queue or else join() can hang.
+            logging.info("processor before self._result_queue.empty() 2")
             if not self._result_queue.empty():
+                logging.info("processor before self._result_queue.get_nowait()")
                 self._result = self._result_queue.get_nowait()
-            logging.debug("Waiting for %s", self._process)
+                logging.info("processor after self._result_queue.get_nowait()")
+            logging.info("Waiting for %s", self._process)
+            logging.info("processor before self._process.join() 2")
             self._process.join()
+            logging.info("processor after self._process.join() 2")
             return True
 
+        logging.info("processor done end")
         return False
 
     @property
