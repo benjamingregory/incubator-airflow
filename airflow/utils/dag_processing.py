@@ -549,12 +549,13 @@ class DagFileProcessorManager(LoggingMixin):
         have finished since the last time this was called
         :rtype: list[SimpleDag]
         """
-        self.logger.info("start BaseExecutor heartbeat")
+        self.logger.info("start DagFileProcessorManager heartbeat")
         finished_processors = {}
         """:type : dict[unicode, AbstractDagFileProcessor]"""
         running_processors = {}
         """:type : dict[unicode, AbstractDagFileProcessor]"""
 
+        self.logger.info("before DagFileProcessorManager for loop 1")
         for file_path, processor in self._processors.items():
             if processor.done:
                 self.logger.info("Processor for {} finished".format(file_path))
@@ -567,7 +568,10 @@ class DagFileProcessorManager(LoggingMixin):
             else:
                 running_processors[file_path] = processor
         self._processors = running_processors
+        self.logger.info("after DagFileProcessorManager for loop 1")
 
+
+        self.logger.info("before DagFileProcessorManager for loop 2")
         # Collect all the DAGs that were found in the processed files
         simple_dags = []
         for file_path, processor in finished_processors.items():
@@ -578,8 +582,10 @@ class DagFileProcessorManager(LoggingMixin):
                                          processor.exit_code,
                                          processor.log_file))
             else:
+                self.logger.info("processor.result is None for {}".format(processor))
                 for simple_dag in processor.result:
                     simple_dags.append(simple_dag)
+        self.logger.info("after DagFileProcessorManager for loop 2")
 
         # Generate more file paths to process if we processed all the files
         # already.
@@ -589,13 +595,14 @@ class DagFileProcessorManager(LoggingMixin):
             file_paths_in_progress = self._processors.keys()
             now = datetime.now()
             file_paths_recently_processed = []
+            self.logger.info("before DagFileProcessorManager for loop 3")
             for file_path in self._file_paths:
                 last_finish_time = self.get_last_finish_time(file_path)
                 if (last_finish_time is not None and
                     (now - last_finish_time).total_seconds() <
                         self._process_file_interval):
                     file_paths_recently_processed.append(file_path)
-
+            self.logger.info("after DagFileProcessorManager for loop 3")
             files_paths_at_run_limit = [file_path
                                         for file_path, num_runs in self._run_count.items()
                                         if num_runs == self._max_runs]
@@ -605,16 +612,19 @@ class DagFileProcessorManager(LoggingMixin):
                                         set(file_paths_recently_processed) -
                                         set(files_paths_at_run_limit))
 
+            self.logger.info("before DagFileProcessorManager for loop 4")
             for file_path, processor in self._processors.items():
                 self.logger.info("File path {} is still being processed (started: {})"
                                   .format(processor.file_path,
                                           processor.start_time.isoformat()))
+            self.logger.info("after DagFileProcessorManager for loop 4")
 
             self.logger.info("Queuing the following files for processing:\n\t{}"
                               .format("\n\t".join(files_paths_to_queue)))
 
             self._file_path_queue.extend(files_paths_to_queue)
 
+        self.logger.info("before DagFileProcessorManager while loop")
         # Start more processors if we have enough slots and files to process
         while (self._parallelism - len(self._processors) > 0 and
                len(self._file_path_queue) > 0):
@@ -622,18 +632,24 @@ class DagFileProcessorManager(LoggingMixin):
             log_file_path = self._get_log_file_path(file_path)
             processor = self._processor_factory(file_path, log_file_path)
 
+            self.logger.info("before DagFileProcessorManager processor.start")
             processor.start()
+            self.logger.info("after DagFileProcessorManager processor.start")
             self.logger.info("Started a process (PID: {}) to generate "
                              "tasks for {} - logging into {}"
                              .format(processor.pid, file_path, log_file_path))
 
             self._processors[file_path] = processor
+        self.logger.info("after DagFileProcessorManager while loop")
 
+        self.logger.info("before DagFileProcessorManager symlink_latest_log_directory")
         self.symlink_latest_log_directory()
+        self.logger.info("after DagFileProcessorManager symlink_latest_log_directory")
 
         # Update scheduler heartbeat count.
         self._run_count[self._heart_beat_key] += 1
 
+        self.logger.info("finish DagFileProcessorManager heartbeat")
         return simple_dags
 
     def max_runs_reached(self):
