@@ -224,6 +224,7 @@ class DagBag(BaseDagBag, LoggingMixin):
         Given a path to a python module or zip file, this method imports
         the module and look for dag objects within it.
         """
+        self.logger.info("process_file start: {}".format(filepath))
         found_dags = []
 
         # todo: raise exception?
@@ -309,6 +310,8 @@ class DagBag(BaseDagBag, LoggingMixin):
                     if not dag.full_filepath:
                         dag.full_filepath = filepath
                     dag.is_subdag = False
+                    self.logger.info("found DAG: {}".format(dag))
+                    self.logger.info("DAG _dag_id: {}".format(dag._dag_id))
                     self.bag_dag(dag, parent_dag=dag, root_dag=dag)
                     found_dags.append(dag)
                     found_dags += dag.subdags
