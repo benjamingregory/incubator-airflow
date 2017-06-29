@@ -556,18 +556,26 @@ class DagFileProcessorManager(LoggingMixin):
         """:type : dict[unicode, AbstractDagFileProcessor]"""
 
         self.logger.info("before DagFileProcessorManager for loop 1")
+        self.logger.info("{}".format(self._processors.items()))
         for file_path, processor in self._processors.items():
+            self.logger.info("start loop")
             self.logger.info("file_path, processor == {}, {}".format(file_path, processor))
             if processor.done:
                 self.logger.info("Processor for {} finished".format(file_path))
                 now = datetime.now()
+                self.logger.info("finished_processors[file_path] = processor")
                 finished_processors[file_path] = processor
+                self.logger.info("self._last_runtime[file_path]")
                 self._last_runtime[file_path] = (now -
                                                  processor.start_time).total_seconds()
+                self.logger.info("self._last_finish_time[file_path] = now")
                 self._last_finish_time[file_path] = now
+                self.logger.info("self._run_count[file_path] += 1")
                 self._run_count[file_path] += 1
             else:
+                self.logger.info("processor not finished")
                 running_processors[file_path] = processor
+            self.logger.info("end loop")
         self._processors = running_processors
         self.logger.info("after DagFileProcessorManager for loop 1")
 
