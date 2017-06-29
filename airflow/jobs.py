@@ -454,7 +454,7 @@ class DagFileProcessor(AbstractDagFileProcessor):
                 logging.info("processor after self._result_queue.get_nowait()")
             logging.info("Waiting for %s", self._process)
             logging.info("processor before self._process.join() 2")
-            self._process.join()
+            self._process.join(5)
             logging.info("processor after self._process.join() 2")
             return True
 
