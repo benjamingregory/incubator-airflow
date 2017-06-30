@@ -310,6 +310,11 @@ class DagFileProcessor(AbstractDagFileProcessor):
         def helper(result_queue, file_path, log_file, thread_name, dag_id_white_list, pickle_dags):
             # This helper runs in the newly created process
 
+            logging.info("Started process (PID=%s) to work on %s",
+                         os.getpid(),
+                         file_path)
+
+            threading.current_thread().name = thread_name
             # Re-direct stdout and stderr to a separate log file. Otherwise,
             # the main log becomes too hard to read. No buffering to enable
             # responsive file tailing
@@ -336,15 +341,14 @@ class DagFileProcessor(AbstractDagFileProcessor):
                 # Change the thread name to differentiate log lines. This is
                 # really a separate process, but changing the name of the
                 # process doesn't work, so changing the thread name instead.
-                threading.current_thread().name = thread_name
                 start_time = time.time()
 
-                logging.info("Started process (PID=%s) to work on %s",
-                             os.getpid(),
-                             file_path)
+                logging.info("making SchedulerJob: {}".format(file_path))
                 scheduler_job = SchedulerJob(dag_ids=dag_id_white_list)
+                logging.info("running SchedulerJob: {}".format(file_path))
                 result = scheduler_job.process_file(file_path,
                                                     pickle_dags)
+                logging.info("done running SchedulerJob: {}".format(file_path))
                 result_queue.put(result)
                 logging.info("{} result_queue --- Put items on queue: {}".format(result, thread_name))
                 end_time = time.time()
