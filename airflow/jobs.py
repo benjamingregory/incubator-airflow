@@ -432,13 +432,15 @@ class DagFileProcessor(AbstractDagFileProcessor):
 
         logging.info("processor before self._result_queue.empty()")
         if not self._result_queue.empty():
-            logging.info("processor before self._result_queue.get_nowait()")
-            self._result = self._result_queue.get_nowait()
-            logging.info("processor after self._result_queue.get_nowait()")
+            logging.info("processor before self._result_queue.get(True, 30)")
+            self._result = self._result_queue.get(True, 30)
+            logging.info("processor after self._result_queue.get(True, 30)")
+            if self._result is None:
+                logging.info("self._result is None")
             self._done = True
             logging.info("Waiting for %s", self._process)
             logging.info("processor before self._process.join() 1")
-            self._process.join()
+            self._process.join(30)
             logging.info("processor after self._process.join() 1")
             return True
 
@@ -449,15 +451,19 @@ class DagFileProcessor(AbstractDagFileProcessor):
             # Get the object from the queue or else join() can hang.
             logging.info("processor before self._result_queue.empty() 2")
             if not self._result_queue.empty():
-                logging.info("processor before self._result_queue.get_nowait()")
-                self._result = self._result_queue.get_nowait()
-                logging.info("processor after self._result_queue.get_nowait()")
+                logging.info("processor before self._result_queue.get(True, 30)")
+                self._result = self._result_queue.get(True, 30)
+                logging.info("processor after self._result_queue.get(True, 30)")
+                if self._result is None:
+                    logging.info("self._result is None")
             logging.info("Waiting for %s", self._process)
             logging.info("processor before self._process.join() 2")
-            self._process.join()
+            logging.info("size of queue: {}".format(self._result_queue.qsize()))
+            self._process.join(30)
             logging.info("processor after self._process.join() 2")
             return True
 
+        logging.info("processing isn't done yet")
         logging.info("processor done end")
         return False
 
