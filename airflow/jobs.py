@@ -318,12 +318,12 @@ class DagFileProcessor(AbstractDagFileProcessor):
             if not os.path.isdir(parent_dir):
                 os.makedirs(parent_dir)
 
-            f = open(log_file, "a")
-            original_stdout = sys.stdout
-            original_stderr = sys.stderr
+            # f = open(log_file, "a")
+            # original_stdout = sys.stdout
+            # original_stderr = sys.stderr
 
-            sys.stdout = f
-            sys.stderr = f
+            # sys.stdout = f
+            # sys.stderr = f
 
             try:
                 # Re-configure logging to use the new output streams
@@ -354,10 +354,10 @@ class DagFileProcessor(AbstractDagFileProcessor):
                 # Log exceptions through the logging framework.
                 logging.exception("Got an exception! Propagating...")
                 raise
-            finally:
-                sys.stdout = original_stdout
-                sys.stderr = original_stderr
-                f.close()
+            # finally:
+            #     sys.stdout = original_stdout
+            #     sys.stderr = original_stderr
+            #     f.close()
 
         p = multiprocessing.Process(target=helper,
                                     args=(),
