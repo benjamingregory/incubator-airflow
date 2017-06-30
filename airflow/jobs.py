@@ -345,6 +345,7 @@ class DagFileProcessor(AbstractDagFileProcessor):
                 result = scheduler_job.process_file(file_path,
                                                     pickle_dags)
                 result_queue.put(result)
+                logging.info("result_queue --- Put items on queue: {}".format(result))
                 end_time = time.time()
                 logging.info("Processing %s took %.3f seconds",
                              file_path,
@@ -432,15 +433,15 @@ class DagFileProcessor(AbstractDagFileProcessor):
 
         logging.info("processor before self._result_queue.empty()")
         if not self._result_queue.empty():
-            logging.info("processor before self._result_queue.get(True, 30)")
-            self._result = self._result_queue.get(True, 30)
-            logging.info("processor after self._result_queue.get(True, 30)")
+            logging.info("processor before self.get_nowait()")
+            self._result = self.get_nowait()
+            logging.info("processor after self.get_nowait()")
             if self._result is None:
                 logging.info("self._result is None")
             self._done = True
             logging.info("Waiting for %s", self._process)
             logging.info("processor before self._process.join() 1")
-            self._process.join(30)
+            self._process.join()
             logging.info("processor after self._process.join() 1")
             return True
 
@@ -451,15 +452,15 @@ class DagFileProcessor(AbstractDagFileProcessor):
             # Get the object from the queue or else join() can hang.
             logging.info("processor before self._result_queue.empty() 2")
             if not self._result_queue.empty():
-                logging.info("processor before self._result_queue.get(True, 30)")
-                self._result = self._result_queue.get(True, 30)
-                logging.info("processor after self._result_queue.get(True, 30)")
+                logging.info("processor before self.get_nowait()")
+                self._result = self._result_queue.get_nowait()
+                logging.info("processor after self.get_nowait()")
                 if self._result is None:
                     logging.info("self._result is None")
             logging.info("Waiting for %s", self._process)
             logging.info("processor before self._process.join() 2")
             logging.info("size of queue: {}".format(self._result_queue.qsize()))
-            self._process.join(30)
+            self._process.join()
             logging.info("processor after self._process.join() 2")
             return True
 

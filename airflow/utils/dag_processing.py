@@ -591,7 +591,7 @@ class DagFileProcessorManager(LoggingMixin):
                                          processor.exit_code,
                                          processor.log_file))
             else:
-                self.logger.info("processor.result is None for {}".format(processor))
+                self.logger.info("processor.result isn't None for {}".format(processor))
                 for simple_dag in processor.result:
                     simple_dags.append(simple_dag)
         self.logger.info("after DagFileProcessorManager for loop 2")
