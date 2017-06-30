@@ -306,7 +306,8 @@ class DagFileProcessor(AbstractDagFileProcessor):
         :return: the process that was launched
         :rtype: multiprocessing.Process
         """
-        def helper():
+        logging.info("DagFileProcessor._launch_process start: {}".format(file_path))
+        def helper(result_queue, file_path, log_file, thread_name, dag_id_white_list, pickle_dags):
             # This helper runs in the newly created process
 
             # Re-direct stdout and stderr to a separate log file. Otherwise,
@@ -345,9 +346,10 @@ class DagFileProcessor(AbstractDagFileProcessor):
                 result = scheduler_job.process_file(file_path,
                                                     pickle_dags)
                 result_queue.put(result)
-                logging.info("result_queue --- Put items on queue: {}".format(result))
+                logging.info("{} result_queue --- Put items on queue: {}".format(result, thread_name))
                 end_time = time.time()
-                logging.info("Processing %s took %.3f seconds",
+                logging.info("%s Processing %s took %.3f seconds",
+                             thread_name,
                              file_path,
                              end_time - start_time)
             except:
@@ -358,17 +360,21 @@ class DagFileProcessor(AbstractDagFileProcessor):
             #     sys.stdout = original_stdout
             #     sys.stderr = original_stderr
             #     f.close()
+            #     logging.info("closed log file")
+            logging.info("process should have exited: {}".format(file_path))
 
         p = multiprocessing.Process(target=helper,
-                                    args=(),
+                                    args=(result_queue, file_path, log_file, thread_name, dag_id_white_list, pickle_dags),
                                     name="{}-Process".format(thread_name))
         p.start()
+        logging.info("DagFileProcessor._launch_process end: {}".format(file_path))
         return p
 
     def start(self):
         """
         Launch the process and start processing the DAG.
         """
+        logging.info("DagFileProcessor.start start")
         self._process = DagFileProcessor._launch_process(
             self._result_queue,
             self.file_path,
@@ -377,6 +383,7 @@ class DagFileProcessor(AbstractDagFileProcessor):
             "DagFileProcessor{}".format(self._instance_id),
             self.log_file)
         self._start_time = datetime.now()
+        logging.info("DagFileProcessor.start end: {}".format(self._process))
 
     def terminate(self, sigkill=False):
         """
