@@ -58,6 +58,7 @@ from airflow.www.app import cached_app
 from sqlalchemy import func
 from sqlalchemy.orm import exc
 
+logging_utils.install_mp_handler()
 
 api.load_auth()
 api_module = import_module(conf.get('cli', 'api_client'))
