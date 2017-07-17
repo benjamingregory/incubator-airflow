@@ -60,7 +60,6 @@ def GetDefaultExecutor():
         DEFAULT_EXECUTOR = MesosExecutor()
     else:
         # Loading plugins
-        _integrate_plugins()
         executor_path = _EXECUTOR.split('.')
         if len(executor_path) != 2:
             raise AirflowException(

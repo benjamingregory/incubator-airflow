@@ -539,6 +539,7 @@ class Connection(Base):
         ('mssql', 'Microsoft SQL Server'),
         ('mesos_framework-id', 'Mesos Framework ID'),
         ('jira', 'JIRA',),
+        ('facebook_ads', 'Facebook Ads API')
     ]
 
     def __init__(
