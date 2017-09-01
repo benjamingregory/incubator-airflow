@@ -161,7 +161,7 @@ class DockerOperator(BaseOperator):
             logging.info('Pulling docker image ' + image)
             for l in self.cli.pull(image, stream=True):
                 output = json.loads(l.decode('utf-8'))
-                print('output =', output)
+
                 # status key is not present when there's an error pulling the docker image
                 status = output.get('status')
                 if status is not None:
