@@ -219,6 +219,6 @@ class DockerOperator(BaseOperator):
             self.remove_container()
 
     def remove_container(self):
+        logging.info('entering remove_container remove={}, containerId={}'.format(self.remove, self.container['Id']))
         if self.remove:
             self.cli.remove_container(self.container['Id'])
-
