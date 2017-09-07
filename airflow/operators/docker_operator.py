@@ -184,7 +184,8 @@ class DockerOperator(BaseOperator):
                                                             privileged=self.privileged),
                     image=image,
                     mem_limit=self.mem_limit,
-                    user=self.user
+                    user=self.user,
+                    tty=True,
             )
             self.cli.start(self.container['Id'])
             logging.info('started cli')
