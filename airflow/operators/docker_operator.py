@@ -198,7 +198,10 @@ class DockerOperator(BaseOperator):
             #         line = line.decode('utf-8')
             #     logging.info(line)
             #     # logging.info("{}".format(line.strip()))
-            line = ''  # TODO: figure out why cli.logs() is breaking
+
+            # line = ''  # TODO: figure out why cli.logs() is breaking
+            line = self.cli.logs(container=self.container['Id'], stream=False)
+
             logging.info('after disabled cli.logs')
 
             # jobs that are still running never makes it here
