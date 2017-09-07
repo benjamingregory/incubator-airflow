@@ -187,14 +187,17 @@ class DockerOperator(BaseOperator):
                     user=self.user
             )
             self.cli.start(self.container['Id'])
+            logging.info('started cli')
 
             line = ''
             for line in self.cli.logs(container=self.container['Id'], stream=True):
                 line = line.strip()
                 if hasattr(line, 'decode'):
+                    logging.info('line hasattr decode {}'.format(line))
                     line = line.decode('utf-8')
                 logging.info(line)
 
+            # jobs that are still running never makes it here
             logging.info('before self.cli.wait')
             exit_code = self.cli.wait(self.container['Id'])
             logging.info('after self.cli.wait')
