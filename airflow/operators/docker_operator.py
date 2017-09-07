@@ -195,9 +195,14 @@ class DockerOperator(BaseOperator):
                     line = line.decode('utf-8')
                 logging.info(line)
 
+            logging.info('before self.cli.wait')
             exit_code = self.cli.wait(self.container['Id'])
+            logging.info('after self.cli.wait')
+
+            logging.info('before remove_container')
             # remove the container if specified in initializer
             self.remove_container()
+            logging.info('after remove_container')
 
             if exit_code != 0:
                 raise AirflowException('docker container failed')
