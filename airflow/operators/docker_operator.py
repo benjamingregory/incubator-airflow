@@ -191,11 +191,12 @@ class DockerOperator(BaseOperator):
 
             line = ''
             for line in self.cli.logs(container=self.container['Id'], stream=True):
-                line = line.strip()
-                if hasattr(line, 'decode'):
-                    logging.info('line hasattr decode {}'.format(line))
-                    line = line.decode('utf-8')
-                logging.info(line)
+                # line = line.strip()
+                # if hasattr(line, 'decode'):
+                #     logging.info('line hasattr decode {}'.format(line))
+                #     line = line.decode('utf-8')
+                # logging.info(line)
+                logging.info("{}".format(line.strip()))
 
             # jobs that are still running never makes it here
             logging.info('before self.cli.wait')
