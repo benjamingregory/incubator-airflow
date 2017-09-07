@@ -191,25 +191,27 @@ class DockerOperator(BaseOperator):
             logging.info('started cli')
 
             logging.info('before disabled cli.logs')
-            # line = ''
-            # for line in self.cli.logs(container=self.container['Id'], stream=True):
-            #     line = line.strip()
-            #     if hasattr(line, 'decode'):
-            #         logging.info('line hasattr decode {}'.format(line))
-            #         line = line.decode('utf-8')
-            #     logging.info(line)
-            #     # logging.info("{}".format(line.strip()))
+            logging.info('before tty logs')
+            line = ''
+            for line in self.cli.logs(container=self.container['Id'], stream=True):
+                line = line.strip()
+                if hasattr(line, 'decode'):
+                    logging.info('line hasattr decode {}'.format(line))
+                    line = line.decode('utf-8')
+                logging.info(line)
+                # logging.info("{}".format(line.strip()))
+            logging.info('after tty logs')
 
             # line = ''  # TODO: figure out why cli.logs() is breaking
 
-            container_id = self.container['Id']
-            print('container_id =', container_id)
-            lines = self.cli.logs(container=container_id, stream=False)
-            print('type(lines) =', type(lines))
-            print('len(lines) =', len(lines))
-            line = ''
-            for line in lines:
-                logging.info(line)
+            # container_id = self.container['Id']
+            # print('container_id =', container_id)
+            # lines = self.cli.logs(container=container_id, stream=False)
+            # print('type(lines) =', type(lines))
+            # print('len(lines) =', len(lines))
+            # line = ''
+            # for line in lines:
+            #     logging.info(line)
 
             logging.info('after disabled cli.logs')
 
