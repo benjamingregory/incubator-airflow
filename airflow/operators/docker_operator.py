@@ -200,7 +200,11 @@ class DockerOperator(BaseOperator):
             #     # logging.info("{}".format(line.strip()))
 
             # line = ''  # TODO: figure out why cli.logs() is breaking
-            line = self.cli.logs(container=self.container['Id'], stream=False)
+            lines = self.cli.logs(container=self.container['Id'], stream=False)
+            print('type(lines) =', type(lines))
+            print('len(lines) =', len(lines))
+            for line in lines:
+                logging.info(line)
 
             logging.info('after disabled cli.logs')
 
