@@ -197,15 +197,13 @@ class DockerOperator(BaseOperator):
             line = ''
             for char in self.cli.logs(container=container_id, stream=True):
                 if char == '\n':
+                    line = line.strip()
+                    if hasattr(line, 'decode'):
+                        line = line.decode('utf-8')
                     logging.info(line)
                     line = ''
                 else:
                     line += char
-                # line = line.strip()
-                # if hasattr(line, 'decode'):
-                #     logging.info('line hasattr decode {}'.format(line))
-                #     line = line.decode('utf-8')
-                # logging.info(line)
             print('after streaming lines loop')
 
             logging.info('after disabled cli.logs')
