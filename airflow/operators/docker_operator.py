@@ -150,7 +150,7 @@ class DockerOperator(BaseOperator):
             )
             self.docker_url = self.docker_url.replace('tcp://', 'https://')
 
-        self.cli = APIClient(base_url=self.docker_url, version=self.api_version, tls=tls_config)
+        self.cli = APIClient(base_url=self.docker_url, version=self.api_version, tls=tls_config, timeout=120)
 
         if ':' not in self.image:
             image = self.image + ':latest'
@@ -186,6 +186,7 @@ class DockerOperator(BaseOperator):
                     mem_limit=self.mem_limit,
                     user=self.user,
                     tty=True,
+                    stop_timeout=120,
             )
             self.cli.start(self.container['Id'])
             logging.info('started cli')
