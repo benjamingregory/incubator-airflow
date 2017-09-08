@@ -186,7 +186,6 @@ class DockerOperator(BaseOperator):
                     mem_limit=self.mem_limit,
                     user=self.user,
                     tty=True,
-                    stop_timeout=120,
             )
             self.cli.start(self.container['Id'])
             logging.info('started cli')
