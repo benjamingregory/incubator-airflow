@@ -150,7 +150,12 @@ class DockerOperator(BaseOperator):
             )
             self.docker_url = self.docker_url.replace('tcp://', 'https://')
 
-        self.cli = APIClient(base_url=self.docker_url, version=self.api_version, tls=tls_config, timeout=120)
+        # In production, some redshift operations can be slow if the client's
+        # Redshift is particularly busy. This timeout is how much time in
+        # seconds the Docker client connection will allow to pass before it
+        # closes (in other words, it represents the maximum amount of time for
+        # an operation to run on a Redshift instance).
+        self.cli = APIClient(base_url=self.docker_url, version=self.api_version, tls=tls_config, timeout=20*60)
 
         if ':' not in self.image:
             image = self.image + ':latest'
