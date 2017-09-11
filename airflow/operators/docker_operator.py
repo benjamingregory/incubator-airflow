@@ -155,7 +155,12 @@ class DockerOperator(BaseOperator):
         # seconds the Docker client connection will allow to pass before it
         # closes (in other words, it represents the maximum amount of time for
         # an operation to run on a Redshift instance).
-        self.cli = APIClient(base_url=self.docker_url, version=self.api_version, tls=tls_config, timeout=20*60)
+        self.cli = APIClient(
+            base_url=self.docker_url,
+            version=self.api_version,
+            tls=tls_config,
+            timeout=20*60,
+        )
 
         if ':' not in self.image:
             image = self.image + ':latest'
@@ -167,12 +172,13 @@ class DockerOperator(BaseOperator):
             for l in self.cli.pull(image, stream=True):
                 output = json.loads(l.decode('utf-8'))
 
-                # status key is not present when there's an error pulling the docker image
+                # status key not present if error pulling the docker image
                 status = output.get('status')
                 if status is not None:
                     logging.info('{}'.format(status))
                 else:
-                    logging.info('* status is missing from output = {}'.format(output))
+                    logging.info('status missing from output = {}'
+                                 ''.format(output))
 
         cpu_shares = int(round(self.cpus * 1024))
 
@@ -184,9 +190,11 @@ class DockerOperator(BaseOperator):
                     command=self.get_command(),
                     cpu_shares=cpu_shares,
                     environment=self.environment,
-                    host_config=self.cli.create_host_config(binds=self.volumes,
-                                                            network_mode=self.network_mode,
-                                                            privileged=self.privileged),
+                    host_config=self.cli.create_host_config(
+                        binds=self.volumes,
+                        network_mode=self.network_mode,
+                        privileged=self.privileged,
+                    ),
                     image=image,
                     mem_limit=self.mem_limit,
                     user=self.user,
@@ -194,10 +202,9 @@ class DockerOperator(BaseOperator):
             )
             self.cli.start(self.container['Id'])
 
-            container_id = self.container['Id']
-
             line = ''
-            for char in self.cli.logs(container=container_id, stream=True):
+            for char in self.cli.logs(container=self.container['Id'],
+                                      stream=True):
                 if char == '\n':
                     line = line.strip()
                     if hasattr(line, 'decode'):
@@ -207,8 +214,6 @@ class DockerOperator(BaseOperator):
                 else:
                     line += char
 
-
-            # jobs that are still running never makes it here
             exit_code = self.cli.wait(self.container['Id'])
 
             # remove the container if specified in initializer
