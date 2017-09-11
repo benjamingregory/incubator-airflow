@@ -193,12 +193,9 @@ class DockerOperator(BaseOperator):
                     tty=True,
             )
             self.cli.start(self.container['Id'])
-            logging.info('started cli')
 
             container_id = self.container['Id']
-            print('container_id =', container_id)
 
-            print('before streaming lines loop')
             line = ''
             for char in self.cli.logs(container=container_id, stream=True):
                 if char == '\n':
@@ -209,19 +206,13 @@ class DockerOperator(BaseOperator):
                     line = ''
                 else:
                     line += char
-            print('after streaming lines loop')
 
-            logging.info('after disabled cli.logs')
 
             # jobs that are still running never makes it here
-            logging.info('before self.cli.wait')
             exit_code = self.cli.wait(self.container['Id'])
-            logging.info('after self.cli.wait')
 
-            logging.info('before remove_container')
             # remove the container if specified in initializer
             self.remove_container()
-            logging.info('after remove_container')
 
             if exit_code != 0:
                 raise AirflowException('docker container failed')
@@ -243,6 +234,5 @@ class DockerOperator(BaseOperator):
             self.remove_container()
 
     def remove_container(self):
-        logging.info('entering remove_container remove={}, containerId={}'.format(self.remove, self.container['Id']))
         if self.remove:
             self.cli.remove_container(self.container['Id'])
