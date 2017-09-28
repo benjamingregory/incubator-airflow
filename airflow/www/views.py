@@ -1870,12 +1870,22 @@ class HomeView(AdminIndexView):
             }
 
         all_dag_ids = sorted(set(orm_dags.keys()) | set(webserver_dags.keys()))
+
+        # Astronomer Edit
+        # https://github.com/astronomerio/engineering/issues/216
+
+        # Filter dags down to only those found in webserver dag bag (active dags)
+        dag_list = []
+        for dag_id in all_dag_ids:
+            if dag_id in dagbag.dags:
+                dag_list.append(dag_id)
+
         return self.render(
             'airflow/dags.html',
             webserver_dags=webserver_dags,
             orm_dags=orm_dags,
             hide_paused=hide_paused,
-            all_dag_ids=all_dag_ids)
+            all_dag_ids=dag_list)
 
 
 class QueryView(wwwutils.DataProfilingMixin, BaseView):
