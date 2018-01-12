@@ -471,7 +471,7 @@ class DagBag(BaseDagBag, LoggingMixin):
     def paused_dags(self):
         session = settings.Session()
         dag_ids = [dp.dag_id for dp in session.query(DagModel).filter(
-            DagModel.is_paused.is_(True))]
+            DagModel.is_paused.__eq__(True))]
         session.commit()
         session.close()
         return dag_ids
@@ -1166,13 +1166,19 @@ class TaskInstance(Base):
         """
         delay = self.task.retry_delay
         if self.task.retry_exponential_backoff:
+            min_backoff = int(delay.total_seconds() * (2 ** (self.try_number - 2)))
+            # deterministic per task instance
+            hash = int(hashlib.sha1("{}#{}#{}#{}".format(self.dag_id, self.task_id,
+                self.execution_date, self.try_number).encode('utf-8')).hexdigest(), 16)
+            # between 0.5 * delay * (2^retry_number) and 1.0 * delay * (2^retry_number)
+            modded_hash = min_backoff + hash % min_backoff
             # timedelta has a maximum representable value. The exponentiation
             # here means this value can be exceeded after a certain number
             # of tries (around 50 if the initial delay is 1s, even fewer if
             # the delay is larger). Cap the value here before creating a
             # timedelta object so the operation doesn't fail.
             delay_backoff_in_seconds = min(
-                delay.total_seconds() * (2 ** (self.try_number - 1)),
+                modded_hash,
                 timedelta.max.total_seconds() - 1
             )
             delay = timedelta(seconds=delay_backoff_in_seconds)
@@ -1760,6 +1766,47 @@ class Log(Base):
         self.owner = owner or task_owner
 
 
+class SkipMixin(object):
+    def skip(self, dag_run, execution_date, tasks):
+        """
+        Sets tasks instances to skipped from the same dag run.
+        :param dag_run: the DagRun for which to set the tasks to skipped
+        :param execution_date: execution_date
+        :param tasks: tasks to skip (not task_ids)
+        """
+        if not tasks:
+            return
+
+        task_ids = [d.task_id for d in tasks]
+        now = datetime.now()
+        session = settings.Session()
+
+        if dag_run:
+            session.query(TaskInstance).filter(
+                TaskInstance.dag_id == dag_run.dag_id,
+                TaskInstance.execution_date == dag_run.execution_date,
+                TaskInstance.task_id.in_(task_ids)
+            ).update({TaskInstance.state : State.SKIPPED,
+                      TaskInstance.start_date: now,
+                      TaskInstance.end_date: now},
+                     synchronize_session=False)
+            session.commit()
+        else:
+            assert execution_date is not None, "Execution date is None and no dag run"
+
+            logging.warning("No DAG RUN present this should not happen")
+            # this is defensive against dag runs that are not complete
+            for task in tasks:
+                ti = TaskInstance(task, execution_date=execution_date)
+                ti.state = State.SKIPPED
+                ti.start_date = now
+                ti.end_date = now
+                session.merge(ti)
+
+            session.commit()
+        session.close()
+
+
 @functools.total_ordering
 class BaseOperator(object):
     """
@@ -2210,11 +2257,13 @@ class BaseOperator(object):
         memo[id(self)] = result
 
         for k, v in list(self.__dict__.items()):
-            if k not in ('user_defined_macros', 'params'):
+            if k not in ('user_defined_macros', 'user_defined_filters', 'params'):
                 setattr(result, k, copy.deepcopy(v, memo))
         result.params = self.params
         if hasattr(self, 'user_defined_macros'):
             result.user_defined_macros = self.user_defined_macros
+        if hasattr(self, 'user_defined_filters'):
+            result.user_defined_filters = self.user_defined_filters
         return result
 
     def render_template_from_field(self, attr, content, context, jinja_env):
@@ -2605,6 +2654,12 @@ class DAG(BaseDag, LoggingMixin):
         templates related to this DAG. Note that you can pass any
         type of object here.
     :type user_defined_macros: dict
+    :param user_defined_filters: a dictionary of filters that will be exposed
+        in your jinja templates. For example, passing
+        ``dict(hello=lambda name: 'Hello %s' % name)`` to this argument allows
+        you to ``{{ 'world' | hello }}`` in all jinja templates related to
+        this DAG.
+    :type user_defined_filters: dict
     :param default_args: A dictionary of default parameters to be used
         as constructor keyword parameters when initialising operators.
         Note that operators have the same hook, and precede those defined
@@ -2643,6 +2698,7 @@ class DAG(BaseDag, LoggingMixin):
             full_filepath=None,
             template_searchpath=None,
             user_defined_macros=None,
+            user_defined_filters=None,
             default_args=None,
             concurrency=configuration.getint('core', 'dag_concurrency'),
             max_active_runs=configuration.getint(
@@ -2654,6 +2710,7 @@ class DAG(BaseDag, LoggingMixin):
             params=None):
 
         self.user_defined_macros = user_defined_macros
+        self.user_defined_filters = user_defined_filters
         self.default_args = default_args or {}
         self.params = params or {}
 
@@ -2803,7 +2860,7 @@ class DAG(BaseDag, LoggingMixin):
             DR.dag_id == self.dag_id,
         )
         if not include_externally_triggered:
-            qry = qry.filter(DR.external_trigger.is_(False))
+            qry = qry.filter(DR.external_trigger.__eq__(False))
 
         qry = qry.order_by(DR.execution_date.desc())
 
@@ -2990,7 +3047,7 @@ class DAG(BaseDag, LoggingMixin):
     def get_template_env(self):
         """
         Returns a jinja2 Environment while taking into account the DAGs
-        template_searchpath and user_defined_macros
+        template_searchpath, user_defined_macros and user_defined_filters
         """
         searchpath = [self.folder]
         if self.template_searchpath:
@@ -3002,6 +3059,8 @@ class DAG(BaseDag, LoggingMixin):
             cache_size=0)
         if self.user_defined_macros:
             env.globals.update(self.user_defined_macros)
+        if self.user_defined_filters:
+            env.filters.update(self.user_defined_filters)
 
         return env
 
@@ -3028,7 +3087,7 @@ class DAG(BaseDag, LoggingMixin):
         )
         if state:
             tis = tis.filter(TI.state == state)
-        tis = tis.all()
+        tis = tis.order_by(TI.execution_date).all()
         return tis
 
     @property
@@ -3168,10 +3227,11 @@ class DAG(BaseDag, LoggingMixin):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in list(self.__dict__.items()):
-            if k not in ('user_defined_macros', 'params'):
+            if k not in ('user_defined_macros', 'user_defined_filters', 'params'):
                 setattr(result, k, copy.deepcopy(v, memo))
 
         result.user_defined_macros = self.user_defined_macros
+        result.user_defined_filters = self.user_defined_filters
         result.params = self.params
         return result
 
@@ -3271,8 +3331,21 @@ class DAG(BaseDag, LoggingMixin):
         """
         if not self.start_date and not task.start_date:
             raise AirflowException("Task is missing the start_date parameter")
-        if not task.start_date:
+        # if the task has no start date, assign it the same as the DAG
+        elif not task.start_date:
             task.start_date = self.start_date
+        # otherwise, the task will start on the later of its own start date and
+        # the DAG's start date
+        elif self.start_date:
+            task.start_date = max(task.start_date, self.start_date)
+
+        # if the task has no end date, assign it the same as the dag
+        if not task.end_date:
+            task.end_date = self.end_date
+        # otherwise, the task will end on the earlier of its own end date and
+        # the DAG's end date
+        elif task.end_date and self.end_date:
+            task.end_date = min(task.end_date, self.end_date)
 
         if task.task_id in self.task_dict:
             # TODO: raise an error in Airflow 2.0
