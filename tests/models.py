@@ -23,6 +23,8 @@ import os
 import pendulum
 import unittest
 import time
+import six
+import re
 
 from airflow import configuration, models, settings, AirflowException
 from airflow.exceptions import AirflowSkipException
@@ -39,6 +41,7 @@ from airflow.operators.python_operator import PythonOperator
 from airflow.operators.python_operator import ShortCircuitOperator
 from airflow.ti_deps.deps.trigger_rule_dep import TriggerRuleDep
 from airflow.utils import timezone
+from airflow.utils.weight_rule import WeightRule
 from airflow.utils.state import State
 from airflow.utils.trigger_rule import TriggerRule
 from mock import patch
@@ -200,6 +203,96 @@ class DagTest(unittest.TestCase):
             default_args={'owner': 'owner1'})
 
         self.assertEquals(tuple(), dag.topological_sort())
+
+    def test_dag_task_priority_weight_total(self):
+        width = 5
+        depth = 5
+        weight = 5
+        pattern = re.compile('stage(\\d*).(\\d*)')
+        # Fully connected parallel tasks. i.e. every task at each parallel
+        # stage is dependent on every task in the previous stage.
+        # Default weight should be calculated using downstream descendants
+        with DAG('dag', start_date=DEFAULT_DATE,
+                 default_args={'owner': 'owner1'}) as dag:
+            pipeline = [
+                [DummyOperator(
+                    task_id='stage{}.{}'.format(i, j), priority_weight=weight)
+                    for j in range(0, width)] for i in range(0, depth)
+            ]
+            for d, stage in enumerate(pipeline):
+                if d == 0:
+                    continue
+                for current_task in stage:
+                    for prev_task in pipeline[d - 1]:
+                        current_task.set_upstream(prev_task)
+
+            for task in six.itervalues(dag.task_dict):
+                match = pattern.match(task.task_id)
+                task_depth = int(match.group(1))
+                # the sum of each stages after this task + itself
+                correct_weight = ((depth - (task_depth + 1)) * width + 1) * weight
+
+                calculated_weight = task.priority_weight_total
+                self.assertEquals(calculated_weight, correct_weight)
+
+        # Same test as above except use 'upstream' for weight calculation
+        weight = 3
+        with DAG('dag', start_date=DEFAULT_DATE,
+                 default_args={'owner': 'owner1'}) as dag:
+            pipeline = [
+                [DummyOperator(
+                    task_id='stage{}.{}'.format(i, j), priority_weight=weight,
+                    weight_rule=WeightRule.UPSTREAM)
+                    for j in range(0, width)] for i in range(0, depth)
+            ]
+            for d, stage in enumerate(pipeline):
+                if d == 0:
+                    continue
+                for current_task in stage:
+                    for prev_task in pipeline[d - 1]:
+                        current_task.set_upstream(prev_task)
+
+            for task in six.itervalues(dag.task_dict):
+                match = pattern.match(task.task_id)
+                task_depth = int(match.group(1))
+                # the sum of each stages after this task + itself
+                correct_weight = ((task_depth) * width + 1) * weight
+
+                calculated_weight = task.priority_weight_total
+                self.assertEquals(calculated_weight, correct_weight)
+
+        # Same test as above except use 'absolute' for weight calculation
+        weight = 10
+        with DAG('dag', start_date=DEFAULT_DATE,
+                 default_args={'owner': 'owner1'}) as dag:
+            pipeline = [
+                [DummyOperator(
+                    task_id='stage{}.{}'.format(i, j), priority_weight=weight,
+                    weight_rule=WeightRule.ABSOLUTE)
+                    for j in range(0, width)] for i in range(0, depth)
+            ]
+            for d, stage in enumerate(pipeline):
+                if d == 0:
+                    continue
+                for current_task in stage:
+                    for prev_task in pipeline[d - 1]:
+                        current_task.set_upstream(prev_task)
+
+            for task in six.itervalues(dag.task_dict):
+                match = pattern.match(task.task_id)
+                task_depth = int(match.group(1))
+                # the sum of each stages after this task + itself
+                correct_weight = weight
+
+                calculated_weight = task.priority_weight_total
+                self.assertEquals(calculated_weight, correct_weight)
+
+        # Test if we enter an invalid weight rule
+        with DAG('dag', start_date=DEFAULT_DATE,
+                 default_args={'owner': 'owner1'}) as dag:
+            with self.assertRaises(AirflowException):
+                DummyOperator(task_id='should_fail', weight_rule='no rule')
+
 
     def test_get_num_task_instances(self):
         test_dag_id = 'test_get_num_task_instances_dag'
@@ -551,6 +644,68 @@ class DagRunTest(unittest.TestCase):
         dr2.update_state()
         self.assertEqual(dr.state, State.RUNNING)
         self.assertEqual(dr2.state, State.RUNNING)
+
+    def test_dagrun_success_callback(self):
+        def on_success_callable(context):
+            self.assertEqual(
+                context['dag_run'].dag_id,
+                'test_dagrun_success_callback'
+            )
+
+        dag = DAG(
+            dag_id='test_dagrun_success_callback',
+            start_date=datetime.datetime(2017, 1, 1),
+            on_success_callback=on_success_callable,
+        )
+        dag_task1 = DummyOperator(
+            task_id='test_state_succeeded1',
+            dag=dag)
+        dag_task2 = DummyOperator(
+            task_id='test_state_succeeded2',
+            dag=dag)
+        dag_task1.set_downstream(dag_task2)
+
+        initial_task_states = {
+            'test_state_succeeded1': State.SUCCESS,
+            'test_state_succeeded2': State.SUCCESS,
+        }
+
+        dag_run = self.create_dag_run(dag=dag,
+                                      state=State.RUNNING,
+                                      task_states=initial_task_states)
+        updated_dag_state = dag_run.update_state()
+        self.assertEqual(State.SUCCESS, updated_dag_state)
+
+    def test_dagrun_failure_callback(self):
+        def on_failure_callable(context):
+            self.assertEqual(
+                context['dag_run'].dag_id,
+                'test_dagrun_failure_callback'
+            )
+
+        dag = DAG(
+            dag_id='test_dagrun_failure_callback',
+            start_date=datetime.datetime(2017, 1, 1),
+            on_failure_callback=on_failure_callable,
+        )
+        dag_task1 = DummyOperator(
+            task_id='test_state_succeeded1',
+            dag=dag)
+        dag_task2 = DummyOperator(
+            task_id='test_state_failed2',
+            dag=dag)
+
+        initial_task_states = {
+            'test_state_succeeded1': State.SUCCESS,
+            'test_state_failed2': State.FAILED,
+        }
+        dag_task1.set_downstream(dag_task2)
+
+        dag_run = self.create_dag_run(dag=dag,
+                                      state=State.RUNNING,
+                                      task_states=initial_task_states)
+        updated_dag_state = dag_run.update_state()
+        self.assertEqual(State.FAILED, updated_dag_state)
 
     def test_get_task_instance_on_empty_dagrun(self):
         """
@@ -1134,6 +1289,43 @@ class TaskInstanceTest(unittest.TestCase):
 
         self.assertEqual(completed, expect_completed)
         self.assertEqual(ti.state, expect_state)
+
+    def test_xcom_pull(self):
+        """
+        Test xcom_pull, using different filtering methods.
+        """
+        dag = models.DAG(
+            dag_id='test_xcom', schedule_interval='@monthly',
+            start_date=timezone.datetime(2016, 6, 1, 0, 0, 0))
+
+        exec_date = timezone.utcnow()
+
+        # Push a value
+        task1 = DummyOperator(task_id='test_xcom_1', dag=dag, owner='airflow')
+        ti1 = TI(task=task1, execution_date=exec_date)
+        ti1.xcom_push(key='foo', value='bar')
+
+        # Push another value with the same key (but by a different task)
+        task2 = DummyOperator(task_id='test_xcom_2', dag=dag, owner='airflow')
+        ti2 = TI(task=task2, execution_date=exec_date)
+        ti2.xcom_push(key='foo', value='baz')
+
+        # Pull with no arguments
+        result = ti1.xcom_pull()
+        self.assertEqual(result, None)
+        # Pull the value pushed most recently by any task.
+        result = ti1.xcom_pull(key='foo')
+        self.assertIn(result, 'baz')
+        # Pull the value pushed by the first task
+        result = ti1.xcom_pull(task_ids='test_xcom_1', key='foo')
+        self.assertEqual(result, 'bar')
+        # Pull the value pushed by the second task
+        result = ti1.xcom_pull(task_ids='test_xcom_2', key='foo')
+        self.assertEqual(result, 'baz')
+        # Pull the values pushed by both tasks
+        result = ti1.xcom_pull(
+            task_ids=['test_xcom_1', 'test_xcom_2'], key='foo')
+        self.assertEqual(result, ('bar', 'baz'))
 
     def test_xcom_pull_after_success(self):
         """
