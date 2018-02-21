@@ -96,7 +96,7 @@ class BaseJob(Base, LoggingMixin):
 
     def __init__(
             self,
-            executor=executors.DEFAULT_EXECUTOR,
+            executor=executors.GetDefaultExecutor(),
             heartrate=conf.getfloat('scheduler', 'JOB_HEARTBEAT_SEC'),
             *args, **kwargs):
         self.hostname = socket.getfqdn()
@@ -432,8 +432,9 @@ class DagFileProcessor(AbstractDagFileProcessor):
         if not self._result_queue.empty():
             self._result = self._result_queue.get_nowait()
             self._done = True
-            logging.debug("Waiting for %s", self._process)
-            self._process.join()
+            logging.debug("Result queue not empty. Waiting for %s", self._process)
+            # terminate the process to avoid deadlocks
+            self.terminate(sigkill=True)
             return True
 
         # Potential error case when process dies
@@ -442,8 +443,8 @@ class DagFileProcessor(AbstractDagFileProcessor):
             # Get the object from the queue or else join() can hang.
             if not self._result_queue.empty():
                 self._result = self._result_queue.get_nowait()
-            logging.debug("Waiting for %s", self._process)
-            self._process.join()
+            logging.debug("Process not alive. Waiting for %s", self._process)
+            self.terminate()
             return True
 
         return False
@@ -767,7 +768,8 @@ class SchedulerJob(BaseJob):
                 return None
 
             # don't do scheduler catchup for dag's that don't have dag.catchup = True
-            if not dag.catchup:
+            # or dags scheduled with @once
+            if not dag.catchup and dag.schedule_interval != "@once":
                 # The logic is that we move start_date up until
                 # one period before, so that datetime.now() is AFTER
                 # the period end, and the job can be created...

@@ -151,6 +151,7 @@ hive = [
 jdbc = ['jaydebeapi>=0.2.0']
 mssql = ['pymssql>=2.1.1', 'unicodecsv>=0.14.1']
 mysql = ['mysqlclient>=1.3.6']
+mongo = ['pymongo>=3.5.1']
 rabbitmq = ['librabbitmq>=1.6.1']
 oracle = ['cx_Oracle>=5.1.2']
 postgres = ['psycopg2>=2.6']
@@ -161,6 +162,7 @@ s3 = [
 ]
 samba = ['pysmbclient>=0.1.3']
 slack = ['slackclient>=1.0.0']
+snowflake = ['snowflake-connector-python==1.4.1']
 statsd = ['statsd>=3.0.1, <4.0']
 vertica = ['vertica-python>=0.5.1']
 ldap = ['ldap3>=0.9.9.1']
@@ -177,7 +179,7 @@ github_enterprise = ['Flask-OAuthlib>=0.9.1']
 qds = ['qds-sdk>=1.9.6']
 cloudant = ['cloudant>=0.5.9,<2.0'] # major update coming soon, clamp to 0.x
 
-all_dbs = postgres + mysql + hive + mssql + hdfs + vertica + cloudant
+all_dbs = postgres + mysql + hive + mssql + hdfs + vertica + cloudant + mongo + snowflake
 devel = [
     'click',
     'freezegun',
@@ -224,7 +226,10 @@ def do_setup():
             'jinja2>=2.7.3, <2.9.0',
             'lxml>=3.6.0, <4.0',
             'markdown>=2.5.2, <3.0',
-            'pandas>=0.17.1, <1.0.0',
+            # TODO Pandas 21.1 has bad wheels. Locking this down for CincyData
+            # Open back up after it is resolved by community. ASC
+            # 'pandas>=0.17.1, <1.0.0',
+            'pandas>=0.17.1, <0.20.4',
             'psutil>=4.2.0, <5.0.0',
             'pygments>=2.0.1, <3.0',
             'python-daemon>=2.1.1, <2.2',
@@ -261,6 +266,7 @@ def do_setup():
             'ldap': ldap,
             'mssql': mssql,
             'mysql': mysql,
+            'mongo': mongo,
             'oracle': oracle,
             'password': password,
             'postgres': postgres,
@@ -270,6 +276,7 @@ def do_setup():
             'salesforce': salesforce,
             'samba': samba,
             'slack': slack,
+            'snowflake': snowflake,
             'statsd': statsd,
             'vertica': vertica,
             'webhdfs': webhdfs,

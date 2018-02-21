@@ -19,14 +19,13 @@ import six
 from flask import Flask
 from flask_admin import Admin, base
 from flask_cache import Cache
-from flask_wtf.csrf import CsrfProtect
-csrf = CsrfProtect()
 
 import airflow
 from airflow import models
 from airflow.settings import Session
 
 from airflow.www.blueprints import routes
+from airflow.www.csrf import csrf
 from airflow import jobs
 from airflow import settings
 from airflow import configuration
