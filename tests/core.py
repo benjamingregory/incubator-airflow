@@ -66,7 +66,7 @@ from jinja2 import UndefinedError
 
 import six
 
-NUM_EXAMPLE_DAGS = 18
+NUM_EXAMPLE_DAGS = 19
 DEV_NULL = '/dev/null'
 TEST_DAG_FOLDER = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'dags')
@@ -1332,6 +1332,24 @@ class CliTests(unittest.TestCase):
                 'trigger_dag', 'example_bash_operator',
                 '--run_id', 'trigger_dag_xxx',
                 '-c', 'NOT JSON'])
+        )
+
+    def test_delete_dag(self):
+        DM = models.DagModel
+        key = "my_dag_id"
+        session = settings.Session()
+        session.add(DM(dag_id=key))
+        session.commit()
+        cli.delete_dag(self.parser.parse_args([
+            'delete_dag', key, '--yes']))
+        self.assertEqual(session.query(DM).filter_by(dag_id=key).count(), 0)
+        self.assertRaises(
+            AirflowException,
+            cli.delete_dag,
+            self.parser.parse_args([
+                'delete_dag',
+                'does_not_exist_dag',
+                '--yes'])
         )
 
     def test_pool_create(self):

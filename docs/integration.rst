@@ -62,8 +62,8 @@ Your reverse proxy (ex: nginx) should be configured as follow:
               proxy_set_header Connection "upgrade";
           }
       }
-      
- 
+
+
 .. _Azure:
 
 Azure: Microsoft Azure
@@ -348,6 +348,8 @@ BigQuery Operators
 - :ref:`BigQueryCheckOperator` : Performs checks against a SQL query that will return a single row with different values.
 - :ref:`BigQueryValueCheckOperator` : Performs a simple value check using SQL code.
 - :ref:`BigQueryIntervalCheckOperator` : Checks that the values of metrics given as SQL expressions are within a certain tolerance of the ones from days_back before.
+- :ref:`BigQueryCreateEmptyTableOperator` : Creates a new, empty table in the specified BigQuery dataset optionally with schema.
+- :ref:`BigQueryCreateExternalTableOperator` : Creates a new, external table in the dataset with the data in Google Cloud Storage.
 - :ref:`BigQueryOperator` : Executes BigQuery SQL queries in a specific BigQuery database.
 - :ref:`BigQueryToBigQueryOperator` : Copy a BigQuery table to another BigQuery table.
 - :ref:`BigQueryToCloudStorageOperator` : Transfers a BigQuery table to a Google Cloud Storage bucket
@@ -374,12 +376,40 @@ BigQueryIntervalCheckOperator
 
 .. autoclass:: airflow.contrib.operators.bigquery_check_operator.BigQueryIntervalCheckOperator
 
+.. _BigQueryGetDataOperator:
+
+BigQueryGetDataOperator
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.bigquery_get_data.BigQueryGetDataOperator
+
+.. _BigQueryCreateEmptyTableOperator:
+
+BigQueryCreateEmptyTableOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.bigquery_operator.BigQueryCreateEmptyTableOperator
+
+.. _BigQueryCreateExternalTableOperator:
+
+BigQueryCreateExternalTableOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.bigquery_operator.BigQueryCreateExternalTableOperator
+
 .. _BigQueryOperator:
 
 BigQueryOperator
 ^^^^^^^^^^^^^^^^
 
 .. autoclass:: airflow.contrib.operators.bigquery_operator.BigQueryOperator
+
+.. _BigQueryTableDeleteOperator:
+
+BigQueryTableDeleteOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.bigquery_table_delete_operator.BigQueryTableDeleteOperator
 
 .. _BigQueryToBigQueryOperator:
 
@@ -410,6 +440,7 @@ DataFlow Operators
 """"""""""""""""""
 
 - :ref:`DataFlowJavaOperator` : launching Cloud Dataflow jobs written in Java.
+- :ref:`DataflowTemplateOperator` : launching a templated Cloud DataFlow batch job.
 - :ref:`DataFlowPythonOperator` : launching Cloud Dataflow jobs written in python.
 
 .. _DataFlowJavaOperator:
@@ -453,6 +484,13 @@ DataFlowJavaOperator
         },
         dag=dag)
 
+.. _DataflowTemplateOperator:
+
+DataflowTemplateOperator
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.dataflow_operator.DataflowTemplateOperator
+
 .. _DataFlowPythonOperator:
 
 DataFlowPythonOperator
@@ -475,12 +513,30 @@ Cloud DataProc
 DataProc Operators
 """"""""""""""""""
 
+- :ref:`DataprocClusterCreateOperator` : Create a new cluster on Google Cloud Dataproc.
+- :ref:`DataprocClusterDeleteOperator` : Delete a cluster on Google Cloud Dataproc.
 - :ref:`DataProcPigOperator` : Start a Pig query Job on a Cloud DataProc cluster.
 - :ref:`DataProcHiveOperator` : Start a Hive query Job on a Cloud DataProc cluster.
 - :ref:`DataProcSparkSqlOperator` : Start a Spark SQL query Job on a Cloud DataProc cluster.
 - :ref:`DataProcSparkOperator` : Start a Spark Job on a Cloud DataProc cluster.
 - :ref:`DataProcHadoopOperator` : Start a Hadoop Job on a Cloud DataProc cluster.
 - :ref:`DataProcPySparkOperator` : Start a PySpark Job on a Cloud DataProc cluster.
+- :ref:`DataprocWorkflowTemplateInstantiateOperator` : Instantiate a WorkflowTemplate on Google Cloud Dataproc.
+- :ref:`DataprocWorkflowTemplateInstantiateInlineOperator` : Instantiate a WorkflowTemplate Inline on Google Cloud Dataproc.
+
+.. _DataprocClusterCreateOperator:
+
+DataprocClusterCreateOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.dataproc_operator.DataprocClusterCreateOperator
+
+.. _DataprocClusterDeleteOperator:
+
+DataprocClusterDeleteOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.dataproc_operator.DataprocClusterDeleteOperator
 
 .. _DataProcPigOperator:
 
@@ -523,11 +579,43 @@ DataProcPySparkOperator
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: airflow.contrib.operators.dataproc_operator.DataProcPySparkOperator
-    :members:
 
+.. _DataprocWorkflowTemplateInstantiateOperator:
+
+DataprocWorkflowTemplateInstantiateOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.dataproc_operator.DataprocWorkflowTemplateInstantiateOperator
+
+.. _DataprocWorkflowTemplateInstantiateInlineOperator:
+
+DataprocWorkflowTemplateInstantiateInlineOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.dataproc_operator.DataprocWorkflowTemplateInstantiateInlineOperator
 
 Cloud Datastore
 '''''''''''''''
+
+Datastore Operators
+"""""""""""""""""""
+
+- :ref:`DatastoreExportOperator` : Export entities from Google Cloud Datastore to Cloud Storage.
+- :ref:`DatastoreImportOperator` : Import entities from Cloud Storage to Google Cloud Datastore.
+
+.. _DatastoreExportOperator:
+
+DatastoreExportOperator
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.datastore_export_operator.DatastoreExportOperator
+
+.. _DatastoreImportOperator:
+
+DatastoreImportOperator
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.datastore_import_operator.DatastoreImportOperator
 
 DatastoreHook
 """""""""""""
@@ -597,8 +685,34 @@ Cloud Storage
 Storage Operators
 """""""""""""""""
 
+- :ref:`FileToGoogleCloudStorageOperator` : Uploads a file to Google Cloud Storage.
+- :ref:`GoogleCloudStorageCopyOperator` : Copies objects (optionally from a directory) filtered by 'delimiter' (file extension for e.g .json) from a bucket to another bucket in a different directory, if required.
+- :ref:`GoogleCloudStorageCreateBucketOperator` : Creates a new cloud storage bucket.
+- :ref:`GoogleCloudStorageListOperator` : List all objects from the bucket with the give string prefix and delimiter in name.
 - :ref:`GoogleCloudStorageDownloadOperator` : Downloads a file from Google Cloud Storage.
 - :ref:`GoogleCloudStorageToBigQueryOperator` : Loads files from Google cloud storage into BigQuery.
+- :ref:`GoogleCloudStorageToGoogleCloudStorageOperator` : Copies a single object from a bucket to another, with renaming if requested.
+
+.. _FileToGoogleCloudStorageOperator:
+
+FileToGoogleCloudStorageOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.file_to_gcs.FileToGoogleCloudStorageOperator
+
+.. _GoogleCloudStorageCopyOperator:
+
+GoogleCloudStorageCopyOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.gcs_copy_operator.GoogleCloudStorageCopyOperator
+
+.. _GoogleCloudStorageCreateBucketOperator:
+
+GoogleCloudStorageCreateBucketOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.gcs_operator.GoogleCloudStorageCreateBucketOperator
 
 .. _GoogleCloudStorageDownloadOperator:
 
@@ -606,7 +720,13 @@ GoogleCloudStorageDownloadOperator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: airflow.contrib.operators.gcs_download_operator.GoogleCloudStorageDownloadOperator
-    :members:
+
+.. _GoogleCloudStorageListOperator:
+
+GoogleCloudStorageListOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.gcs_list_operator.GoogleCloudStorageListOperator
 
 .. _GoogleCloudStorageToBigQueryOperator:
 
@@ -614,8 +734,13 @@ GoogleCloudStorageToBigQueryOperator
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: airflow.contrib.operators.gcs_to_bq.GoogleCloudStorageToBigQueryOperator
-    :members:
 
+.. _GoogleCloudStorageToGoogleCloudStorageOperator:
+
+GoogleCloudStorageToGoogleCloudStorageOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: airflow.contrib.operators.gcs_to_gcs.GoogleCloudStorageToGoogleCloudStorageOperator
 
 GoogleCloudStorageHook
 """"""""""""""""""""""

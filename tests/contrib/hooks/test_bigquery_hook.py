@@ -157,18 +157,42 @@ class TestBigQueryTableSplitter(unittest.TestCase):
         self.assertIn('Format exception for var_x:',
                       str(context.exception), "")
 
+
 class TestBigQueryHookSourceFormat(unittest.TestCase):
     def test_invalid_source_format(self):
         with self.assertRaises(Exception) as context:
-            hook.BigQueryBaseCursor("test", "test").run_load("test.test", "test_schema.json", ["test_data.json"], source_format="json")
+            hook.BigQueryBaseCursor("test", "test").run_load(
+                "test.test", "test_schema.json", ["test_data.json"], source_format="json"
+            )
 
-        # since we passed 'json' in, and it's not valid, make sure it's present in the error string.
+        # since we passed 'json' in, and it's not valid, make sure it's present in the
+        # error string.
         self.assertIn("JSON", str(context.exception))
 
-# Helpers to test_cancel_queries that have mock_poll_job_complete returning false, unless mock_job_cancel was called with the same job_id
+
+class TestBigQueryExternalTableSourceFormat(unittest.TestCase):
+    def test_invalid_source_format(self):
+        with self.assertRaises(Exception) as context:
+            hook.BigQueryBaseCursor("test", "test").create_external_table(
+                external_project_dataset_table='test.test',
+                schema_fields='test_schema.json',
+                source_uris=['test_data.json'],
+                source_format='json'
+            )
+
+        # since we passed 'csv' in, and it's not valid, make sure it's present in the
+        # error string.
+        self.assertIn("JSON", str(context.exception))
+
+
+# Helpers to test_cancel_queries that have mock_poll_job_complete returning false,
+# unless mock_job_cancel was called with the same job_id
 mock_canceled_jobs = []
+
+
 def mock_poll_job_complete(job_id):
     return job_id in mock_canceled_jobs
+
 
 def mock_job_cancel(projectId, jobId):
     mock_canceled_jobs.append(jobId)
@@ -308,6 +332,25 @@ class TestTimePartitioningInRunJob(unittest.TestCase):
             )
 
 
+class TestBigQueryHookLegacySql(unittest.TestCase):
+    """Ensure `use_legacy_sql` param in `BigQueryHook` propagates properly."""
+
+    @mock.patch.object(hook.BigQueryBaseCursor, 'run_with_configuration')
+    def test_hook_uses_legacy_sql_by_default(self, run_with_config):
+        with mock.patch.object(hook.BigQueryHook, 'get_service'):
+            bq_hook = hook.BigQueryHook()
+            bq_hook.get_first('query')
+            args, kwargs = run_with_config.call_args
+            self.assertIs(args[0]['query']['useLegacySql'], True)
+
+    @mock.patch.object(hook.BigQueryBaseCursor, 'run_with_configuration')
+    def test_legacy_sql_override_propagates_properly(self, run_with_config):
+        with mock.patch.object(hook.BigQueryHook, 'get_service'):
+            bq_hook = hook.BigQueryHook(use_legacy_sql=False)
+            bq_hook.get_first('query')
+            args, kwargs = run_with_config.call_args
+            self.assertIs(args[0]['query']['useLegacySql'], False)
+
+
 if __name__ == '__main__':
     unittest.main()
-

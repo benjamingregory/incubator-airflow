@@ -83,6 +83,7 @@ from airflow.utils.db import create_session, provide_session
 from airflow.utils.helpers import alchemy_to_dict
 from airflow.utils.dates import infer_time_unit, scale_time_units, parse_execution_date
 from airflow.utils.timezone import datetime
+from airflow.utils.net import get_hostname
 from airflow.www import utils as wwwutils
 from airflow.www.forms import DateTimeForm, DateTimeWithNumRunsForm
 from airflow.www.validators import GreaterEqualThan
@@ -504,7 +505,9 @@ class Airflow(BaseView):
     def dag_stats(self, session=None):
         ds = models.DagStat
 
-        ds.update()
+        ds.update(
+            dag_ids=[dag.dag_id for dag in dagbag.dags.values() if not dag.is_subdag]
+        )
 
         qry = (
             session.query(ds.dag_id, ds.state, ds.count)
@@ -546,6 +549,7 @@ class Airflow(BaseView):
                 .join(Dag, Dag.dag_id == DagRun.dag_id)
                 .filter(DagRun.state != State.RUNNING)
                 .filter(Dag.is_active == True)
+                .filter(Dag.is_subdag == False)
                 .group_by(DagRun.dag_id)
                 .subquery('last_dag_run')
         )
@@ -554,6 +558,7 @@ class Airflow(BaseView):
                 .join(Dag, Dag.dag_id == DagRun.dag_id)
                 .filter(DagRun.state == State.RUNNING)
                 .filter(Dag.is_active == True)
+                .filter(Dag.is_subdag == False)
                 .subquery('running_dag_run')
         )
 
@@ -643,14 +648,14 @@ class Airflow(BaseView):
     @current_app.errorhandler(404)
     def circles(self):
         return render_template(
-            'airflow/circles.html', hostname=socket.getfqdn()), 404
+            'airflow/circles.html', hostname=get_hostname()), 404
 
     @current_app.errorhandler(500)
     def show_traceback(self):
         from airflow.utils import asciiart as ascii_
         return render_template(
             'airflow/traceback.html',
-            hostname=socket.getfqdn(),
+            hostname=get_hostname(),
             nukular=ascii_.nukular,
             info=traceback.format_exc()), 500
 
@@ -807,10 +812,12 @@ class Airflow(BaseView):
             - The scheduler is down or under heavy load<br/>
             {}
             <br/>
-            If this task instance does not start soon please contact your Airflow administrator for assistance."""
-                .format(
-                "- This task instance already ran and had it's state changed manually (e.g. cleared in the UI)<br/>"
-                if ti.state == State.NONE else "")))]
+            If this task instance does not start soon please contact your Airflow """
+                   """administrator for assistance."""
+                   .format(
+                       "- This task instance already ran and had its state changed "
+                       "manually (e.g. cleared in the UI)<br/>"
+                       if ti.state == State.NONE else "")))]
 
         # Use the scheduler's context to figure out which dependencies are not met
         dep_context = DepContext(SCHEDULER_DEPS)

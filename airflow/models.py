@@ -39,7 +39,6 @@ import os
 import pickle
 import re
 import signal
-import socket
 import sys
 import textwrap
 import traceback
@@ -47,7 +46,7 @@ import warnings
 import hashlib
 
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
 
 from sqlalchemy import (
     Column, Integer, String, DateTime, Text, Boolean, ForeignKey, PickleType,
@@ -84,6 +83,7 @@ from airflow.utils.state import State
 from airflow.utils.timeout import timeout
 from airflow.utils.trigger_rule import TriggerRule
 from airflow.utils.weight_rule import WeightRule
+from airflow.utils.net import get_hostname
 from airflow.utils.log.logging_mixin import LoggingMixin
 
 install_aliases()
@@ -662,8 +662,8 @@ class Connection(Base, LoggingMixin):
                 from airflow.hooks.mysql_hook import MySqlHook
                 return MySqlHook(mysql_conn_id=self.conn_id)
             elif self.conn_type == 'google_cloud_platform':
-                from airflow.contrib.hooks.bigquery_hook import BigQueryHook
-                return BigQueryHook(bigquery_conn_id=self.conn_id)
+                from airflow.contrib.hooks.gcp_api_base_hook import GoogleCloudBaseHook
+                return GoogleCloudBaseHook(gcp_conn_id=self.conn_id)
             elif self.conn_type == 'postgres':
                 from airflow.hooks.postgres_hook import PostgresHook
                 return PostgresHook(postgres_conn_id=self.conn_id)
@@ -797,8 +797,23 @@ class TaskInstance(Base, LoggingMixin):
     def __init__(self, task, execution_date, state=None):
         self.dag_id = task.dag_id
         self.task_id = task.task_id
-        self.execution_date = execution_date
         self.task = task
+        self._log = logging.getLogger("airflow.task")
+
+        # make sure we have a localized execution_date stored in UTC
+        if execution_date and not timezone.is_localized(execution_date):
+            self.log.warning("execution date %s has no timezone information. Using "
+                             "default from dag or system", execution_date)
+            if self.task.has_dag():
+                execution_date = timezone.make_aware(execution_date,
+                                                     self.task.dag.timezone)
+            else:
+                execution_date = timezone.make_aware(execution_date)
+
+            execution_date = timezone.convert_to_utc(execution_date)
+
+        self.execution_date = execution_date
+
         self.queue = task.queue
         self.pool = task.pool
         self.priority_weight = task.priority_weight_total
@@ -810,7 +825,6 @@ class TaskInstance(Base, LoggingMixin):
             self.state = state
         self.hostname = ''
         self.init_on_load()
-        self._log = logging.getLogger("airflow.task")
         # Is this TaskInstance being currently running within `airflow run --raw`.
         # Not persisted to the database so only valid for the current process
         self.is_raw = False
@@ -967,6 +981,8 @@ class TaskInstance(Base, LoggingMixin):
         :param job_id: job ID (needs more details)
         :param pool: the Airflow pool that the task should run in
         :type pool: unicode
+        :param cfg_path: the Path to the configuration file
+        :type cfg_path: basestring
         :return: shell command that can be used to run the task instance
         """
         iso = execution_date.isoformat()
@@ -994,7 +1010,7 @@ class TaskInstance(Base, LoggingMixin):
 
     @property
     def log_url(self):
-        iso = self.execution_date.isoformat()
+        iso = quote(self.execution_date.isoformat())
         BASE_URL = configuration.get('webserver', 'BASE_URL')
         return BASE_URL + (
             "/admin/airflow/log"
@@ -1005,7 +1021,7 @@ class TaskInstance(Base, LoggingMixin):
 
     @property
     def mark_success_url(self):
-        iso = self.execution_date.isoformat()
+        iso = quote(self.execution_date.isoformat())
         BASE_URL = configuration.get('webserver', 'BASE_URL')
         return BASE_URL + (
             "/admin/airflow/action"
@@ -1347,7 +1363,7 @@ class TaskInstance(Base, LoggingMixin):
         self.test_mode = test_mode
         self.refresh_from_db(session=session, lock_for_update=True)
         self.job_id = job_id
-        self.hostname = socket.getfqdn()
+        self.hostname = get_hostname()
         self.operator = task.__class__.__name__
 
         if not ignore_all_deps and not ignore_ti_state and self.state == State.SUCCESS:
@@ -1464,7 +1480,7 @@ class TaskInstance(Base, LoggingMixin):
         self.test_mode = test_mode
         self.refresh_from_db(session=session)
         self.job_id = job_id
-        self.hostname = socket.getfqdn()
+        self.hostname = get_hostname()
         self.operator = task.__class__.__name__
 
         context = {}
@@ -1700,7 +1716,7 @@ class TaskInstance(Base, LoggingMixin):
         class VariableAccessor:
             """
             Wrapper around Variable. This way you can get variables in templates by using
-            {var.variable_name}.
+            {var.value.your_variable_name}.
             """
             def __init__(self):
                 self.var = None
@@ -1713,6 +1729,10 @@ class TaskInstance(Base, LoggingMixin):
                 return str(self.var)
 
         class VariableJsonAccessor:
+            """
+            Wrapper around deserialized Variables. This way you can get variables
+            in templates by using {var.json.your_variable_name}.
+            """
             def __init__(self):
                 self.var = None
 
@@ -2003,7 +2023,7 @@ class SkipMixin(LoggingMixin):
 class BaseOperator(LoggingMixin):
     """
     Abstract base class for all operators. Since operators create objects that
-    become node in the dag, BaseOperator contains many recursive methods for
+    become nodes in the dag, BaseOperator contains many recursive methods for
     dag crawling behavior. To derive this class, you are expected to override
     the constructor as well as the 'execute' method.
 
@@ -3342,12 +3362,7 @@ class DAG(BaseDag, LoggingMixin):
             self.log.info('Executing dag callback function: {}'.format(callback))
             tis = dagrun.get_task_instances(session=session)
             ti = tis[-1]  # get first TaskInstance of DagRun
-            # certain task instance attributes are transient so must save them
-            # -- especially during timeouts theyre lost
-            if not hasattr(ti, 'task'):
-                d = dagrun.dag or DagBag().get_dag(dag_id=dagrun.dag_id)
-                task = d.get_task(ti.task_id)
-                ti.task = task
+            ti.task = self.get_task(ti.task_id)
             context = ti.get_template_context(session=session)
             context.update({'reason': reason})
             callback(context)

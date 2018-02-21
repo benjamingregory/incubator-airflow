@@ -27,7 +27,7 @@ from importlib import import_module
 import argparse
 from builtins import input
 from collections import namedtuple
-from dateutil.parser import parse as parsedate
+from airflow.utils.timezone import parse as parsedate
 import json
 from tabulate import tabulate
 
@@ -54,6 +54,7 @@ from airflow.models import (DagModel, DagBag, TaskInstance,
 
 from airflow.ti_deps.dep_context import (DepContext, SCHEDULER_DEPS)
 from airflow.utils import db as db_utils
+from airflow.utils.net import get_hostname
 from airflow.utils.log.logging_mixin import (LoggingMixin, redirect_stderr,
                                              redirect_stdout, set_context)
 from airflow.www.app import cached_app
@@ -203,6 +204,26 @@ def trigger_dag(args):
     log.info(message)
 
 
+def delete_dag(args):
+    """
+    Deletes all DB records related to the specified dag
+    :param args:
+    :return:
+    """
+    log = LoggingMixin().log
+    if args.yes or input(
+            "This will drop all existing records related to the specified DAG. "
+            "Proceed? (y/n)").upper() == "Y":
+        try:
+            message = api_client.delete_dag(dag_id=args.dag_id)
+        except IOError as err:
+            log.error(err)
+            raise AirflowException(err)
+        log.info(message)
+    else:
+        print("Bail.")
+
+
 def pool(args):
     log = LoggingMixin().log
 
@@ -324,6 +345,58 @@ def set_is_paused(is_paused, args, dag=None):
     print(msg)
 
 
+def _run(args, dag, ti):
+    if args.local:
+        run_job = jobs.LocalTaskJob(
+            task_instance=ti,
+            mark_success=args.mark_success,
+            pickle_id=args.pickle,
+            ignore_all_deps=args.ignore_all_dependencies,
+            ignore_depends_on_past=args.ignore_depends_on_past,
+            ignore_task_deps=args.ignore_dependencies,
+            ignore_ti_state=args.force,
+            pool=args.pool)
+        run_job.run()
+    elif args.raw:
+        ti._run_raw_task(
+            mark_success=args.mark_success,
+            job_id=args.job_id,
+            pool=args.pool,
+        )
+    else:
+        pickle_id = None
+        if args.ship_dag:
+            try:
+                # Running remotely, so pickling the DAG
+                session = settings.Session()
+                pickle = DagPickle(dag)
+                session.add(pickle)
+                session.commit()
+                pickle_id = pickle.id
+                # TODO: This should be written to a log
+                print('Pickled dag {dag} as pickle_id:{pickle_id}'
+                      .format(**locals()))
+            except Exception as e:
+                print('Could not pickle the DAG')
+                print(e)
+                raise e
+
+        executor = GetDefaultExecutor()
+        executor.start()
+        print("Sending to executor.")
+        executor.queue_task_instance(
+            ti,
+            mark_success=args.mark_success,
+            pickle_id=pickle_id,
+            ignore_all_deps=args.ignore_all_dependencies,
+            ignore_depends_on_past=args.ignore_depends_on_past,
+            ignore_task_deps=args.ignore_dependencies,
+            ignore_ti_state=args.force,
+            pool=args.pool)
+        executor.heartbeat()
+        executor.end()
+
+
 def run(args, dag=None):
     # Disable connection pooling to reduce the # of connections on the DB
     # while it's waiting for the task to finish.
@@ -365,63 +438,16 @@ def run(args, dag=None):
 
     ti.init_run_context(raw=args.raw)
 
-    hostname = socket.getfqdn()
+    hostname = get_hostname()
     log.info("Running %s on host %s", ti, hostname)
 
-    with redirect_stdout(ti.log, logging.INFO), redirect_stderr(ti.log, logging.WARN):
-        if args.local:
-            run_job = jobs.LocalTaskJob(
-                task_instance=ti,
-                mark_success=args.mark_success,
-                pickle_id=args.pickle,
-                ignore_all_deps=args.ignore_all_dependencies,
-                ignore_depends_on_past=args.ignore_depends_on_past,
-                ignore_task_deps=args.ignore_dependencies,
-                ignore_ti_state=args.force,
-                pool=args.pool)
-            run_job.run()
-        elif args.raw:
-            ti._run_raw_task(
-                mark_success=args.mark_success,
-                job_id=args.job_id,
-                pool=args.pool,
-            )
-        else:
-            pickle_id = None
-            if args.ship_dag:
-                try:
-                    # Running remotely, so pickling the DAG
-                    session = settings.Session()
-                    pickle = DagPickle(dag)
-                    session.add(pickle)
-                    session.commit()
-                    pickle_id = pickle.id
-                    # TODO: This should be written to a log
-                    print((
-                              'Pickled dag {dag} '
-                              'as pickle_id:{pickle_id}').format(**locals()))
-                except Exception as e:
-                    print('Could not pickle the DAG')
-                    print(e)
-                    raise e
-
-            executor = GetDefaultExecutor()
-            executor.start()
-            print("Sending to executor.")
-            executor.queue_task_instance(
-                ti,
-                mark_success=args.mark_success,
-                pickle_id=pickle_id,
-                ignore_all_deps=args.ignore_all_dependencies,
-                ignore_depends_on_past=args.ignore_depends_on_past,
-                ignore_task_deps=args.ignore_dependencies,
-                ignore_ti_state=args.force,
-                pool=args.pool)
-            executor.heartbeat()
-            executor.end()
-
-    logging.shutdown()
-
+    if args.interactive:
+        _run(args, dag, ti)
+    else:
+        with redirect_stdout(ti.log, logging.INFO),\
+                redirect_stderr(ti.log, logging.WARN):
+            _run(args, dag, ti)
+        logging.shutdown()
 
 def task_failed_deps(args):
     """
@@ -1152,6 +1178,11 @@ class CLIFactory(object):
             ("--stdout",), "Redirect stdout to this file"),
         'log_file': Arg(
             ("-l", "--log-file"), "Location of the log file"),
+        'yes': Arg(
+            ("-y", "--yes"),
+            "Do not prompt to confirm reset. Use with care!",
+            "store_true",
+            default=False),
 
         # backfill
         'mark_success': Arg(
@@ -1281,6 +1312,11 @@ class CLIFactory(object):
         # dependency. This flag should be deprecated and renamed to 'ignore_ti_state' and
         # the "ignore_all_dependencies" command should be called the"force" command
         # instead.
+        'interactive': Arg(
+            ('-int', '--interactive'),
+            help='Do not capture standard output and error streams '
+                 '(useful for interactive debugging)',
+            action='store_true'),
         'force': Arg(
             ("-f", "--force"),
             "Ignore previous task instance state, rerun regardless if task already "
@@ -1364,12 +1400,6 @@ class CLIFactory(object):
             default=conf.get('webserver', 'ERROR_LOGFILE'),
             help="The logfile to store the webserver error log. Use '-' to print to "
                  "stderr."),
-        # resetdb
-        'yes': Arg(
-            ("-y", "--yes"),
-            "Do not prompt to confirm reset. Use with care!",
-            "store_true",
-            default=False),
         # scheduler
         'dag_id_opt': Arg(("-d", "--dag_id"), help="The id of the dag to run"),
         'run_duration': Arg(
@@ -1506,6 +1536,10 @@ class CLIFactory(object):
             'help': "Trigger a DAG run",
             'args': ('dag_id', 'subdir', 'run_id', 'conf', 'exec_date'),
         }, {
+            'func': delete_dag,
+            'help': "Delete all DB records related to the specified DAG",
+            'args': ('dag_id', 'yes',),
+        }, {
             'func': pool,
             'help': "CRUD operations on pools",
             "args": ('pool_set', 'pool_get', 'pool_delete'),
@@ -1529,7 +1563,7 @@ class CLIFactory(object):
                 'dag_id', 'task_id', 'execution_date', 'subdir',
                 'mark_success', 'force', 'pool', 'cfg_path',
                 'local', 'raw', 'ignore_all_dependencies', 'ignore_dependencies',
-                'ignore_depends_on_past', 'ship_dag', 'pickle', 'job_id'),
+                'ignore_depends_on_past', 'ship_dag', 'pickle', 'job_id', 'interactive',),
         }, {
             'func': initdb,
             'help': "Initialize the metadata database",
@@ -1562,7 +1596,7 @@ class CLIFactory(object):
             'func': test,
             'help': (
                 "Test a task instance. This will run a task without checking for "
-                "dependencies or recording it's state in the database."),
+                "dependencies or recording its state in the database."),
             'args': (
                 'dag_id', 'task_id', 'execution_date', 'subdir', 'dry_run',
                 'task_params'),
