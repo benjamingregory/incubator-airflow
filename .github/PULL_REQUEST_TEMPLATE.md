@@ -24,4 +24,3 @@ Please accept this PR. I understand that it will not be reviewed until I have ch
     4. Subject uses the imperative mood ("add", not "adding")
     5. Body wraps at 72 characters
     6. Body explains "what" and "why", not "how"
-
