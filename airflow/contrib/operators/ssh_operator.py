@@ -34,13 +34,14 @@ class SSHOperator(BaseOperator):
     :type remote_host: str
     :param command: command to execute on remote host
     :type command: str
-    :param timeout: timeout for executing the command.
+    :param timeout: timeout (in seconds) for executing the command.
     :type timeout: int
     :param do_xcom_push: return the stdout which also get set in xcom by airflow platform
     :type do_xcom_push: bool
     """
 
     template_fields = ('command',)
+    template_ext = ('.sh',)
 
     @apply_defaults
     def __init__(self,

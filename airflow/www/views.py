@@ -2303,9 +2303,10 @@ class VariableView(wwwutils.DataProfilingMixin, AirflowModelView):
     def hidden_field_formatter(view, context, model, name):
         if wwwutils.should_hide_value_for_key(model.key):
             return Markup('*' * 8)
-        try:
-            return getattr(model, name)
-        except AirflowException:
+        val = getattr(model, name)
+        if val:
+            return val
+        else:
             return Markup('<span class="label label-danger">Invalid</span>')
 
     form_columns = (
@@ -2570,7 +2571,7 @@ class TaskInstanceModelView(ModelViewOnly):
 
             # Collect dags upfront as dagbag.get_dag() will reset the session
             for id_str in ids:
-                task_id, dag_id, execution_date = id_str.split(',')
+                task_id, dag_id, execution_date = iterdecode(id_str)
                 dag = dagbag.get_dag(dag_id)
                 task_details = dag_to_task_details.setdefault(dag, [])
                 task_details.append((task_id, execution_date))
@@ -2604,7 +2605,7 @@ class TaskInstanceModelView(ModelViewOnly):
             TI = models.TaskInstance
             count = len(ids)
             for id in ids:
-                task_id, dag_id, execution_date = id.split(',')
+                task_id, dag_id, execution_date = iterdecode(id)
                 execution_date = parse_execution_date(execution_date)
 
                 ti = session.query(TI).filter(TI.task_id == task_id,
@@ -2672,7 +2673,6 @@ class ConnectionModelView(wwwutils.SuperUserMixin, AirflowModelView):
         'extra__google_cloud_platform__key_path': StringField('Keyfile Path'),
         'extra__google_cloud_platform__keyfile_dict': PasswordField('Keyfile JSON'),
         'extra__google_cloud_platform__scope': StringField('Scopes (comma separated)'),
-
     }
     form_choices = {
         'conn_type': models.Connection._types
