@@ -114,6 +114,23 @@ class WorkerConfiguration:
             volumes[0]["emptyDir"] = {}
         return volumes, volume_mounts
 
+    def _get_logs_volumes_and_mounts(self):
+        """Determine volumes and volume mounts for Airflow workers"""
+        logs_volume_name = "airflow-logs"
+        logs_path = os.path.join(os.path.sep, "usr", "local", "airflow", "logs")
+
+        volumes = [{
+            'name': logs_volume_name,
+            'emptyDir': {}
+        }]
+        volume_mounts = [{
+            'name': logs_volume_name,
+            'mountPath': logs_path,
+            'readOnly': False
+        }]
+
+        return volumes, volume_mounts
+
     def _get_environment(self):
         """Defines any necessary environment variables for the pod executor"""
         env = {
@@ -140,10 +157,12 @@ class WorkerConfiguration:
         return self.kube_config.image_pull_secrets.split(',')
 
     def make_pod(self, namespace, worker_uuid, pod_id, dag_id, task_id, execution_date,
-                 airflow_command, kube_executor_config):
-        volumes, volume_mounts = self._get_volumes_and_mounts()
-        worker_init_container_spec = self._get_init_containers(
-            copy.deepcopy(volume_mounts))
+                 airflow_command, kube_executor_config, log_path, try_number):
+        # volumes, volume_mounts = self._get_volumes_and_mounts()
+        volumes, volume_mounts = self._get_logs_volumes_and_mounts()
+        # worker_init_container_spec = self._get_init_containers(
+        #     copy.deepcopy(volume_mounts))
+
         resources = Resources(
             request_memory=kube_executor_config.request_memory,
             request_cpu=kube_executor_config.request_cpu,
@@ -155,25 +174,37 @@ class WorkerConfiguration:
             "iam.cloud.google.com/service-account": gcp_sa_key
         } if gcp_sa_key else {}
 
+        logger = {
+            "name": "logger",
+            "image": kube_executor_config.image or self.kube_config.kube_image,
+            "command": ["bash", "-cx", "--"],
+            "args": ["tail -n+1 -F {}".format(log_path)],
+        }
+
         return Pod(
             namespace=namespace,
             name=pod_id,
             image=kube_executor_config.image or self.kube_config.kube_image,
             cmds=["bash", "-cx", "--"],
+            # args=["echo '" + airflow_command + "' && sleep 1000"],
             args=[airflow_command],
             labels={
                 "airflow-worker": worker_uuid,
                 "dag_id": dag_id,
                 "task_id": task_id,
-                "execution_date": execution_date
+                "execution_date": execution_date,
+                "try_number": try_number,
+                "tier": "airflow",
+                "component": "worker",
             },
             envs=self._get_environment(),
             secrets=self._get_secrets(),
             service_account_name=self.kube_config.worker_service_account_name,
             image_pull_secrets=self.kube_config.image_pull_secrets,
-            init_containers=worker_init_container_spec,
+            # init_containers=worker_init_container_spec,
             volumes=volumes,
             volume_mounts=volume_mounts,
             resources=resources,
-            annotations=annotations
+            annotations=annotations,
+            logger=logger
         )

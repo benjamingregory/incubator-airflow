@@ -37,6 +37,10 @@ class KubernetesRequestFactory:
         pass
 
     @staticmethod
+    def extract_logger(pod, req):
+        req['spec']['containers'].append(pod.logger)
+
+    @staticmethod
     def extract_image(pod, req):
         req['spec']['containers'][0]['image'] = pod.image
 
@@ -92,6 +96,14 @@ class KubernetesRequestFactory:
             req['spec']['containers'][0]['volumeMounts'] = (
                 req['spec']['containers'][0].get('volumeMounts', []))
             req['spec']['containers'][0]['volumeMounts'].extend(pod.volume_mounts)
+
+            req['spec']['containers'][1]['volumeMounts'] = (
+                req['spec']['containers'][1].get('volumeMounts', []))
+            req['spec']['containers'][1]['volumeMounts'].extend(pod.volume_mounts)
+
+            print("===============VOLUMEMOUNTS=================")
+            print(req)
+            print("===============END VOLUMEMOUNTS=============")
 
     @staticmethod
     def extract_name(pod, req):

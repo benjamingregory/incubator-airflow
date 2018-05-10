@@ -16,6 +16,7 @@
 # under the License.
 
 import base64
+import os
 import multiprocessing
 from queue import Queue
 from dateutil import parser
@@ -186,14 +187,14 @@ class KubeConfig:
         self.airflow_configmap = self.safe_get(self.kubernetes_section,
                                                'airflow_configmap', None)
 
-        self._validate()
+        # self._validate()
 
-    def _validate(self):
-        if not self.dags_volume_claim and (not self.git_repo or not self.git_branch):
-            raise AirflowConfigException(
-                "In kubernetes mode the following must be set in the `kubernetes` "
-                "config section: "
-                "`dags_volume_claim` or `git_repo and git_branch` ")
+    # def _validate(self):
+        # if not self.dags_volume_claim and (not self.git_repo or not self.git_branch):
+        #     raise AirflowConfigException(
+        #         "In kubernetes mode the following must be set in the `kubernetes` "
+        #         "config section: "
+        #         "`dags_volume_claim` or `git_repo and git_branch` ")
 
 
 class KubernetesJobWatcher(multiprocessing.Process, LoggingMixin, object):
@@ -316,16 +317,25 @@ class AirflowKubernetesScheduler(LoggingMixin, object):
         status
         """
         self.log.info('k8s: job is {}'.format(str(next_job)))
-        key, command, kube_executor_config = next_job
+        key, command, try_number, kube_executor_config = next_job
         dag_id, task_id, execution_date = key
         self.log.debug("k8s: running for command {}".format(command))
         self.log.debug("k8s: launching image {}".format(self.kube_config.kube_image))
+
+        log_path = os.path.join(os.path.sep,
+                                "usr", "local", "airflow", "logs",
+                                dag_id, task_id,
+                                execution_date.replace(microsecond=0).isoformat(),
+                                "worker.log")
+
         pod = self.worker_configuration.make_pod(
             namespace=self.namespace, worker_uuid=self.worker_uuid,
             pod_id=self._create_pod_id(dag_id, task_id),
             dag_id=dag_id, task_id=task_id,
             execution_date=self._datetime_to_label_safe_datestring(execution_date),
-            airflow_command=command, kube_executor_config=kube_executor_config
+            airflow_command=command, kube_executor_config=kube_executor_config,
+            log_path=log_path,
+            try_number=try_number
         )
         # the watcher will monitor pods, so we do not block.
         self.launcher.run_pod_async(pod)
@@ -554,13 +564,13 @@ class KubernetesExecutor(BaseExecutor, LoggingMixin):
         self._inject_secrets()
         self.clear_not_launched_queued_tasks()
 
-    def execute_async(self, key, command, queue=None, executor_config=None):
+    def execute_async(self, key, command, queue=None, try_number="0", executor_config=None):
         self.log.info(
             "k8s: adding task {} with command {} with executor_config {}".format(
                 key, command, executor_config
             ))
         kube_executor_config = KubernetesExecutorConfig.from_dict(executor_config)
-        self.task_queue.put((key, command, kube_executor_config))
+        self.task_queue.put((key, command, try_number, kube_executor_config))
 
     def sync(self):
         self.log.info("self.running: {}".format(self.running))
@@ -579,8 +589,8 @@ class KubernetesExecutor(BaseExecutor, LoggingMixin):
             last_resource_version, session=self._session)
 
         if not self.task_queue.empty():
-            key, command, kube_executor_config = self.task_queue.get()
-            self.kube_scheduler.run_next((key, command, kube_executor_config))
+            key, command, try_number, kube_executor_config = self.task_queue.get()
+            self.kube_scheduler.run_next((key, command, try_number, kube_executor_config))
 
     def _change_state(self, key, state, pod_id):
         if state != State.RUNNING:

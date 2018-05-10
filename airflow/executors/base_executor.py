@@ -136,6 +136,7 @@ class BaseExecutor(LoggingMixin):
                 self.execute_async(key=key,
                                    command=command,
                                    queue=queue,
+                                   try_number=str(ti.try_number),
                                    executor_config=ti.executor_config)
             else:
                 self.logger.info(
@@ -182,6 +183,7 @@ class BaseExecutor(LoggingMixin):
                       key,
                       command,
                       queue=None,
+                      try_number="0",
                       executor_config=None):  # pragma: no cover
         """
         This method will execute the command asynchronously.

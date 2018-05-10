@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -768,6 +768,11 @@ class Airflow(BaseView):
                 dag = dagbag.get_dag(dag_id)
                 ti.task = dag.get_task(ti.task_id)
                 logs, metadatas = handler.read(ti, try_number, metadata=metadata)
+                print("=========================LOGS=======================")
+                print(logs)
+                print("----")
+                print(metadatas)
+                print("======================END LOGS=======================")
                 metadata = metadatas[0]
             for i, log in enumerate(logs):
                 if PY2 and not isinstance(log, unicode):

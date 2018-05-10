@@ -73,7 +73,8 @@ class Pod:
             init_containers=None,
             service_account_name=None,
             resources=None,
-            annotations=None
+            annotations=None,
+            logger=None,
     ):
         self.image = image
         self.envs = envs or {}
@@ -93,3 +94,4 @@ class Pod:
         self.service_account_name = service_account_name
         self.resources = resources or Resources()
         self.annotations = annotations or {}
+        self.logger = logger or {}

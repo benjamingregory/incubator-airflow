@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -63,6 +63,7 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         self.log_id_template, self.log_id_jinja_template = \
             parse_template_string(log_id_template)
 
+        print("USING ES HOST: {}".format(host))
         self.client = elasticsearch.Elasticsearch([host])
 
         self.mark_end_on_close = True
@@ -132,6 +133,8 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         :param offset: the offset start to read log from.
         :type offset: str
         """
+
+        print("log_id is: {}, offset is: {}".format(log_id, offset))
 
         # Offset is the unique key for sorting logs given log_id.
         s = Search(using=self.client) \
