@@ -1054,7 +1054,7 @@ class TaskInstance(Base, LoggingMixin):
             TI.execution_date == self.execution_date)
 
         if lock_for_update:
-            ti = qry.with_for_update().first()
+            ti = qry.first()
         else:
             ti = qry.first()
         if ti:
@@ -4276,7 +4276,7 @@ class DagStat(Base):
         try:
             stats = session.query(DagStat).filter(
                 DagStat.dag_id == dag_id
-            ).with_for_update().all()
+            ).all()
 
             for stat in stats:
                 stat.dirty = True
@@ -4307,7 +4307,7 @@ class DagStat(Base):
             if dirty_only:
                 qry = qry.filter(DagStat.dirty == True)
 
-            qry = qry.with_for_update().all()
+            qry = qry.all()
 
             ids = set([dag_stat.dag_id for dag_stat in qry])
 

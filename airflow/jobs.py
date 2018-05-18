@@ -264,7 +264,6 @@ class BaseJob(Base, LoggingMixin):
             session
             .query(TI)
             .filter(or_(*filter_for_tis), TI.state.in_(resettable_states))
-            .with_for_update()
             .all())
         for ti in reset_tis:
             ti.state = State.NONE
@@ -976,7 +975,6 @@ class SchedulerJob(BaseJob):
                         models.DagRun.dag_id == models.TaskInstance.dag_id,
                         models.DagRun.execution_date == models.TaskInstance.execution_date,
                         models.DagRun.state != State.RUNNING))
-                    .with_for_update()
                     .all()
             )
             for ti in tis_to_change:
@@ -1223,7 +1221,6 @@ class SchedulerJob(BaseJob):
 
         tis_to_set_to_queued = (
             ti_query
-            .with_for_update()
             .all())
         if len(tis_to_set_to_queued) == 0:
             self.log.info("No tasks were able to have their state changed to queued.")

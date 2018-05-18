@@ -1,0 +1,58 @@
+---
+version: "2"
+services:
+  cockroach:
+    image: cockroachdb/cockroach
+    command: 
+      - "start"
+      - "--insecure"
+      # - "--store=hello-1"
+      # - "--host=localhost"
+    ports: 
+      - "26257:26257"
+      - "8081:8080"
+    volumes:
+      - ./cockroach-data/:/cockroach/cockroach-data
+
+  # postgres:
+  #   image: postgres:10.1-alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+
+  scheduler:
+    image: astronomerio/ap-airflow:cockroach
+    build:
+      dockerfile: Dockerfile
+      context: .
+    command: ["airflow", "scheduler"]
+    restart: unless-stopped
+    user: astro
+    depends_on:
+      - cockroach
+      # - postgres
+    env_file:
+      - airflow.env
+    # volumes:
+    #   - ./dags:/usr/local/airflow/dags:ro
+
+  webserver:
+    image: astronomerio/ap-airflow:cockroach
+    build:
+      dockerfile: Dockerfile
+      context: .
+    command: ["airflow", "webserver"]
+    restart: unless-stopped
+    user: astro
+    depends_on:
+      - scheduler # Wait for scheduler to avoid race to init db in entrypoint.sh
+      - cockroach
+      # - postgres
+    env_file:
+      - airflow.env
+    ports:
+      - "8080:8080"
+    # volumes:
+    #   - ./dags:/usr/local/airflow/dags:ro
