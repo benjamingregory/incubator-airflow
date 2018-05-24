@@ -21,6 +21,7 @@ import six
 
 from airflow.contrib.kubernetes.pod import Pod, Resources
 from airflow.contrib.kubernetes.secret import Secret
+from airflow import configuration
 
 
 class WorkerConfiguration:
@@ -135,7 +136,8 @@ class WorkerConfiguration:
         """Defines any necessary environment variables for the pod executor"""
         env = {
             'AIRFLOW__CORE__DAGS_FOLDER': '/tmp/dags',
-            'AIRFLOW__CORE__EXECUTOR': 'LocalExecutor'
+            'AIRFLOW__CORE__EXECUTOR': 'LocalExecutor',
+            'AIRFLOW__CORE__SQL_ALCHEMY_CONN': configuration.get('core', 'sql_alchemy_conn'),
         }
         if self.kube_config.airflow_configmap:
             env['AIRFLOW__CORE__AIRFLOW_HOME'] = self.kube_config.airflow_home
