@@ -27,17 +27,17 @@ args = {
 
 dag = DAG(
     dag_id='example_bash_operator', default_args=args,
-    schedule_interval='0 0 * * *',
+    schedule_interval='0 */12 * * *',
     dagrun_timeout=timedelta(minutes=60))
 
 task1 = BashOperator(
     task_id='task1',
-    bash_command='echo "{{ task_instance_key_str }}" && sleep 10000',
+    bash_command='echo "{{ task_instance_key_str }}" && sleep 120',
     dag=dag)
 
 task2 = BashOperator(
     task_id='task2',
-    bash_command='echo "{{ task_instance_key_str }}" && sleep 10000',
+    bash_command='echo "{{ task_instance_key_str }}" && sleep 120',
     dag=dag)
 
 task1.set_downstream(task2)
