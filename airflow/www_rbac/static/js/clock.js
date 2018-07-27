@@ -17,20 +17,20 @@
  * under the License.
  */
 
-import { defaultFormatWithTZ, moment } from './datetime-utils';
+import {defaultFormatWithTZ, moment} from './datetime-utils';
 
 function displayTime() {
-  const utcTime = moment().utc().format(defaultFormatWithTZ);
+  let utcTime = moment().utc().format(defaultFormatWithTZ);
   $('#clock')
-    // hostName declared in baselayout.html
-    // eslint-disable-next-line no-undef
-    .attr('data-original-title', () => hostName)
+    .attr("data-original-title", function() {
+      return hostName
+    })
     .html(utcTime);
 
   setTimeout(displayTime, 1000);
 }
 
-$(document).ready(() => {
+$(document).ready(function () {
   displayTime();
   $('span').tooltip();
 });

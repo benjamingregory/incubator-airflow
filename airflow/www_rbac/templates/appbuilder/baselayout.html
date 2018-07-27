@@ -68,8 +68,8 @@
 {{ super() }}
 <script type="text/javascript">
   // below variables are used in clock.js
-  const hostName = '{{ hostname }}';
-  const csrfToken = '{{ csrf_token() }}';
+  const hostName = '{{ hostname }}'; // eslint-disable-line no-unused-vars
+  const csrfToken = '{{ csrf_token() }}'; // eslint-disable-line no-unused-vars
 </script>
 <script src="{{ url_for_asset('clock.js') }}" type="text/javascript"></script>
 {% endblock %}

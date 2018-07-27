@@ -50,21 +50,21 @@ $(document).ready(() => {
 
   function connTypeChange(connectionType) {
     $('.hide').removeClass('hide');
-    $.each($("[id^='extra__']"), function () {
+    $.each($("[id^='extra__']"), () => {
       $(this).parent().parent().addClass('hide');
     });
-    $.each($(`[id^='extra__${connectionType}']`), function () {
+    $.each($(`[id^='extra__${connectionType}']`), () => {
       $(this).parent().parent().removeClass('hide');
     });
-    $('label[orig_text]').each(function () {
+    $('label[orig_text]').each(() => {
       $(this).text($(this).attr('orig_text'));
     });
-    if (config[connectionType] != undefined) {
+    if (config[connectionType] !== undefined) {
       $.each(config[connectionType].hidden_fields, (i, field) => {
         $(`#${field}`).parent().parent().addClass('hide');
       });
       $.each(config[connectionType].relabeling, (k, v) => {
-        lbl = $(`label[for='${k}']`);
+        const lbl = $(`label[for='${k}']`);
         lbl.attr('orig_text', lbl.text());
         $(`label[for='${k}']`).text(v);
       });
@@ -72,7 +72,7 @@ $(document).ready(() => {
   }
 
   let connectionType = $('#conn_type').val();
-  $('#conn_type').on('change', (e) => {
+  $('#conn_type').on('change', () => {
     connectionType = $('#conn_type').val();
     connTypeChange(connectionType);
   });
