@@ -62,14 +62,14 @@
       } else {
         $('#dur_chart').show();
         $('#cum_dur_chart').hide();
-      };
-    };
-    $( document ).on('chartload', function() {
-      handleCheck();
-    });
-    $('#isCumulative').click(function() {
-      handleCheck();
-    });
+      }
+}
+$(document).on('chartload', () => {
+  handleCheck();
+});
+    $('#isCumulative').click(() => {
+  handleCheck();
+});
   </script>
   <script src="{{url_for('appbuilder.static',filename='datepicker/bootstrap-datepicker.js')}}"></script>
   {{ super() }}

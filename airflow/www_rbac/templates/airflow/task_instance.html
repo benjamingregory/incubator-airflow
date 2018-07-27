@@ -62,19 +62,19 @@
   {{ super() }}
   <script src="{{ url_for('appbuilder.static',filename='datepicker/bootstrap-datepicker.js')}}"></script>
   <script>
-    $( document ).ready(function() {
-      function date_change(){
-          execution_date = $("input#execution_date").val().replace(' ', 'T');
-          loc = decodeURIComponent(window.location.href);
-          loc = loc.replace('{{ execution_date }}', execution_date);
-          window.location = loc;
-      }
-      $("input#execution_date").on("change.daterangepicker", function(){
-          date_change();
-      });
-      $("input#execution_date").on("apply.daterangepicker", function(){
-          date_change();
-      });
-    });
+    $(document).ready(() => {
+  function date_change() {
+        execution_date = $('input#execution_date').val().replace(' ', 'T');
+        loc = decodeURIComponent(window.location.href);
+        loc = loc.replace('{{ execution_date }}', execution_date);
+        window.location = loc;
+  }
+  $('input#execution_date').on('change.daterangepicker', () => {
+    date_change();
+  });
+  $('input#execution_date').on('apply.daterangepicker', () => {
+    date_change();
+  });
+});
   </script>
 {% endblock %}
