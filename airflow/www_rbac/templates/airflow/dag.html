@@ -373,7 +373,21 @@ $('#btn_run').click(() => {
 });
 
 $('#btn_clear').click(() => {
-  const url = `{{ url_for('Airflow.clear') }}?task_id=${encodeURIComponent(taskId)}&dag_id=${encodeURIComponent(dagId)}&future=${$('#btn_future').hasClass('active')}&past=${$('#btn_past').hasClass('active')}&upstream=${$('#btn_upstream').hasClass('active')}&downstream=${$('#btn_downstream').hasClass('active')}&recursive=${$('#btn_recursive').hasClass('active')}&execution_date=${encodeURIComponent(executionDate)}&origin=${encodeURIComponent(window.location)}`;
+  const params = {
+    task_id: taskId,
+    dag_id: dagId,
+    future: $('#btn_future').hasClass('active'),
+    past: $('#btn_past').hasClass('active'),
+    upstream: $('#btn_upstream').hasClass('active'),
+    downstream: $('#btn_downstream').hasClass('active'),
+    recursive: $('#btn_recursive').hasClass('active'),
+    execution_date: executionDate,
+    origin: window.location,
+  };
+  const queryString = Object.keys(params)
+    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join('&');
+  const url = `{{ url_for('Airflow.clear') }}?${queryString}`;
   window.location = url;
 });
 
