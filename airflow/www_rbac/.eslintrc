@@ -5,5 +5,9 @@
   },
   "extends": "airbnb-base",
   "parser": "babel-eslint",
+  "parserOptions": {
+  	"ecmaVersion": 5,
+  	// "sourceType": "script",
+  },
   "plugins": [ "html" ]
 }

@@ -6,8 +6,8 @@ jqClock.min.js
 coverage/**
 static/dist/*
 static/docs/*
-templates/airflow/dags.html
-templates/airflow/gantt.html
-templates/airflow/graph.html
-templates/airflow/ti_log.html
-templates/airflow/tree.html
+// templates/airflow/dags.html
+// templates/airflow/gantt.html
+// templates/airflow/graph.html
+// templates/airflow/ti_log.html
+// templates/airflow/tree.html
