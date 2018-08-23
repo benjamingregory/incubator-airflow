@@ -18,12 +18,13 @@
 # under the License.
 #
 #}
+
 {% extends "airflow/dag.html" %}
 
 {% block head_css %}
-{{ super() }}
-<link rel="stylesheet" type="text/css"
-    href="{{ url_for('appbuilder.static',filename='datepicker/bootstrap-datepicker.css')}}" >
+  {{ super() }}
+  <link rel="stylesheet" type="text/css"
+        href="{{ url_for('appbuilder.static',filename='datepicker/bootstrap-datepicker.css')}}" >
 {% endblock %}
 
 {% block content %}
@@ -58,6 +59,7 @@
   </ul>
   <hr>
 {% endblock %}
+
 {% block tail %}
   {{ super() }}
   <script src="{{ url_for('appbuilder.static',filename='datepicker/bootstrap-datepicker.js')}}"></script>
@@ -70,6 +72,7 @@
       loc = loc.replace('{{ execution_date }}', executionDate);
       window.location = loc;
     }
+
     $('input#execution_date').on('change.daterangepicker', () => {
       date_change();
     });
