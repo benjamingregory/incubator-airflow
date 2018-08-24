@@ -26,6 +26,7 @@
     "flask"
   ],
   "devDependencies": {
+    "@jupyterlab/eslint-plugin-jinja": "^0.2.0",
     "babel": "^6.23.0",
     "babel-core": "^6.26.3",
     "babel-eslint": "^8.2.6",
@@ -53,7 +54,6 @@
     "webpack-manifest-plugin": "^2.0.3"
   },
   "dependencies": {
-    "@jupyterlab/eslint-plugin-jinja": "^0.2.0",
     "bootstrap-3-typeahead": "^4.0.2",
     "bootstrap-toggle": "^2.2.2",
     "d3": "^3.4.4",
