@@ -155,26 +155,6 @@ class BaseJob(Base, LoggingMixin):
         '''
         session = settings.Session()
         job = session.query(BaseJob).filter_by(id=self.id).one()
-
-        # MD = models.DagModel
-        # dagbag_size = (
-        #     session
-        #     .query(MD)
-        #     .filter(
-        #     MD.is_active == True).count()
-        #
-        # Stats.gauge('dagbag_size', dagbag_size, 1)
-
-        # DR = models.DagRun
-        # num_success_dagrun = session
-        #                         .query(DR)
-        #                         .filter(
-        #                             DR.state == 'success').count()
-        # num_failed_dagrun = session.query(DR).filter(DR.state == 'failed').count()
-        #
-        # Stats.gauge('success_dagruns', num_success_dagrun, 1)
-        # Stats.gauge('failed_dagruns', num_failed_dagrun, 1)
-
         make_transient(job)
         session.commit()
         session.close()

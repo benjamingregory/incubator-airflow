@@ -448,8 +448,6 @@ class DagBag(BaseDagBag, LoggingMixin):
                         self.log.warning(e)
         Stats.gauge(
             'collect_dags', (datetime.utcnow() - start_dttm).total_seconds(), 1)
-        # Stats.gauge(
-        #     'dagbag_size', len(self.dags), 1)
         Stats.gauge(
             'dagbag_import_errors', len(self.import_errors), 1)
         self.dagbag_stats = sorted(
