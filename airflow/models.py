@@ -415,6 +415,10 @@ class DagBag(BaseDagBag, LoggingMixin):
                     f = open(os.path.join(root, ignore_file[0]), 'r')
                     patterns += [p for p in f.read().split('\n') if p]
                     f.close()
+
+                # NOTE: Adding deactivate_inactive_dags here, need to change since won't work w/ directories
+                self.deactivate_inactive_dags()
+
                 for f in files:
                     try:
                         filepath = os.path.join(root, f)
@@ -444,8 +448,8 @@ class DagBag(BaseDagBag, LoggingMixin):
                         self.log.warning(e)
         Stats.gauge(
             'collect_dags', (datetime.utcnow() - start_dttm).total_seconds(), 1)
-        Stats.gauge(
-            'dagbag_size', len(self.dags), 1)
+        # Stats.gauge(
+        #     'dagbag_size', len(self.dags), 1)
         Stats.gauge(
             'dagbag_import_errors', len(self.import_errors), 1)
         self.dagbag_stats = sorted(
@@ -4629,22 +4633,26 @@ class DagRun(Base, LoggingMixin):
             if (not unfinished_tasks and
                     any(r.state in (State.FAILED, State.UPSTREAM_FAILED) for r in roots)):
                 self.log.info('Marking run %s failed', self)
+                Stats.incr('failed_dagruns', 1)
                 self.state = State.FAILED
 
             # if all roots succeeded and no unfinished tasks, the run succeeded
             elif not unfinished_tasks and all(r.state in (State.SUCCESS, State.SKIPPED)
                                               for r in roots):
                 self.log.info('Marking run %s successful', self)
+                Stats.incr('successful_dagruns', 1)
                 self.state = State.SUCCESS
 
             # if *all tasks* are deadlocked, the run failed
             elif (unfinished_tasks and none_depends_on_past and
                   none_task_concurrency and no_dependencies_met):
                 self.log.info('Deadlock; marking run %s failed', self)
+                Stats.incr('failed_dagruns', 1, 1)
                 self.state = State.FAILED
 
             # finally, if the roots aren't done, the dag is still running
             else:
+                Stats.gauge('running_dagruns', 1, 1)
                 self.state = State.RUNNING
 
         # todo: determine we want to use with_for_update to make sure to lock the run
