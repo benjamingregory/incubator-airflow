@@ -13,5 +13,10 @@
   "plugins": [
     "@jupyterlab/eslint-plugin-jinja",
     "html"
-  ]
+  ],
+  "rules": {
+     // TODO: remove these rule overrides once the codebase is migrated to fully ES6
+    "func-names": "off",
+    "prefer-arrow-callback": "off"
+  }
 }
