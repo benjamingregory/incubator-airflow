@@ -1,7 +1,7 @@
 {
   "env": {
     "browser": true,
-    "es6": false, // TODO: remove once all JS is in .js files processed by babel
+    "es6": false, // TODO: remove in AIRFLOW-2804 once all JS is processed by Babel
     "jquery": true
   },
   "extends": "airbnb-base",
