@@ -281,6 +281,7 @@
   });
 
   const $input = $('.typeahead');
+  // eslint-disable-next-line no-undef
   const uniqueOptionsSearch = new Set([
     {% for token in auto_complete_data %}
     '{{token}}',

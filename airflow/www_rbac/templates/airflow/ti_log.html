@@ -56,6 +56,7 @@ limitations under the License.
 
   // Recursively fetch logs from flask endpoint.
   function recurse(delay = DELAY) {
+    // eslint-disable-next-line no-undef
     return new Promise(resolve => setTimeout(resolve, delay));
   }
 
@@ -76,6 +77,7 @@ limitations under the License.
     // eslint-disable-next-line no-console
     console.debug(`Auto-tailing log for dag_id: {{ dag_id }}, task_id: {{ task_id }}, execution_date: {{ execution_date }}, tryNumber: ${tryNumber}, metadata: ${JSON.stringify(metadata)}`);
 
+    // eslint-disable-next-line no-undef
     return Promise.resolve(
       $.ajax({
         url: '{{ url_for("Airflow.get_logs_with_metadata") }}',

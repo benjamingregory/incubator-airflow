@@ -109,11 +109,12 @@
     const executionDate = '{{ execution_date }}';
     const arrange = '{{ arrange }}';
 
-    // Below variables are being used in graph.js
+    // tasks, taskInstances, getTaskInstanceURL are used in graph.js
+    /* eslint-disable no-unused-vars */
     const tasks = '{{ tasks|safe }}';
-    // const taskInstances = '{{ task_instances|safe }}'; // TODO: is this used anywhere?
-    // eslint-disable-next-line no-unused-vars
+    const taskInstances = '{{ task_instances|safe }}';
     const getTaskInstanceURL = `{{ url_for("Airflow.task_instances", dag_id="dag.dag_id", execution_date=${executionDate}) }}`;
+    /* eslint-enable no-unused-vars */
 
     const duration = 500;
     const stateFocusMap = {

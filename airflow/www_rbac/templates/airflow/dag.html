@@ -296,9 +296,9 @@
     $('.never_active').removeClass('active');
   });
 
-  let id = '';
   const dagId = '{{ dag.dag_id }}';
-  var dagTZ = '{{ dag.timezone.name }}'; // Being used in datetime-utils.js
+  // eslint-disable-next-line no-unused-vars, prefer-const
+  let dagTZ = '{{ dag.timezone.name }}'; // dagTZ is used and reassigned in datetime-utils.js
   let taskId = '';
   let executionDate = '';
   let subDagId = '';
