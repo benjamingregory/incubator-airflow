@@ -53,7 +53,7 @@
   <script>
   /* global d3 */
 
-  $(document).ready(() => {
+  $(document).ready(function () {
     const data = {{ data | safe }};
     const gantt = d3.gantt()
       .taskTypes(data.taskNames)

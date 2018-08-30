@@ -46,7 +46,7 @@
   {{ super() }}
   <script>
   // We blur task_ids in demo mode
-  $(document).ready(() => {
+  $(document).ready(function () {
     // eslint doesn't realize that there's jinja expansion inside the javascript
     // eslint-disable-next-line no-constant-condition
     if ('{{ demo_mode }}' === 'True') {

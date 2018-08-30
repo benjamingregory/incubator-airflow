@@ -112,7 +112,9 @@
   }
 
   const diagonal = d3.svg.diagonal()
-    .projection(d => [d.y, d.x]);
+    .projection(function (d) {
+      return [d.y, d.x];
+    });
 
   const svg = d3.select('svg')
   // .attr("width", width + margin.left + margin.right)
@@ -126,7 +128,9 @@
   const baseNode = nodes[0] ? (nodes.length === 1) : nodes[1];
 
   const numSquare = baseNode.instances.length;
-  const extent = d3.extent(baseNode.instances, d => new Date(d.execution_date));
+  const extent = d3.extent(baseNode.instances, function (d) {
+    return new Date(d.execution_date);
+  });
   const xScale = d3.time.scale()
     .domain(extent)
     .range([
@@ -183,25 +187,29 @@
       .style('height', `${height}px`);
 
     // Compute the "layout".
-    updateNodes.forEach((n, i2) => {
-      n.x = i2 * barHeight; // eslint-disable-line no-param-reassign
+    updateNodes.forEach(function (n, i2) {
+      return n.x = i2 * barHeight; // eslint-disable-line no-param-reassign
     });
 
     // Update the nodes…
     const node = svg.selectAll('g.node')
-      // eslint-disable-next-line no-param-reassign, no-plusplus, no-return-assign
-      .data(updateNodes, d => d.id || (d.id = ++i));
+      .data(updateNodes, function (d) {
+        // eslint-disable-next-line no-param-reassign, no-plusplus, no-return-assign
+        return d.id || (d.id = ++i);
+      });
 
     const nodeEnter = node.enter().append('g')
       .attr('class', nodeClass)
-      .attr('transform', () => `translate(${source.y0},${source.x0})`)
+      .attr('transform', function () {
+        return `translate(${source.y0},${source.x0})`;
+      })
       .style('opacity', 1e-6);
 
     nodeEnter.append('circle')
       .attr('r', (barHeight / 3))
       .attr('class', 'task')
       .attr('data-toggle', 'tooltip')
-      .attr('title', (d) => {
+      .attr('title', function (d) {
         let tt = '';
         if (d.operator !== undefined) {
           tt += `operator: ${d.operator}<br/>`;
@@ -215,9 +223,15 @@
         return tt;
       })
       .attr('height', barHeight)
-      .attr('width', d => barWidth - d.y)
-      .style('fill', d => d.ui_color)
-      .attr('task_id', d => d.name)
+      .attr('width', function (d) {
+        return barWidth - d.y;
+      })
+      .style('fill', function (d) {
+        return d.ui_color;
+      })
+      .attr('task_id', function (d) {
+        return d.name;
+      })
       .on('click', toggles); // eslint-disable-line no-use-before-define
 
     // FIXME: remove after fixing FIXME below
@@ -225,7 +239,9 @@
     const text = nodeEnter.append('text')
       .attr('dy', 3.5)
       .attr('dx', barHeight / 2)
-      .text(d => d.name);
+      .text(function (d) {
+        return d.name;
+      });
 
     // FIXME: why does this make eslint error out?
     // {% if blur %}
@@ -234,13 +250,16 @@
 
     nodeEnter.append('g')
       .attr('class', 'stateboxes')
-      .attr('transform',
-        d => `translate(${squareX - d.y},0)`)
+      .attr('transform', function (d) {
+        return `translate(${squareX - d.y},0)`;
+      })
       .selectAll('rect')
-      .data(d => d.instances)
+      .data(function (d) {
+        return d.instances;
+      })
       .enter()
       .append('rect')
-      .on('click', (d) => {
+      .on('click', function (d) {
         if (d.task_id === undefined) {
           // eslint-disable-next-line no-undef
           call_modal_dag(d);
@@ -252,14 +271,26 @@
           call_modal(d.task_id, d.execution_date);
         }
       })
-      .attr('class', d => `state ${d.state}`)
+      .attr('class', function (d) {
+        return `state ${d.state}`;
+      })
       .attr('data-toggle', 'tooltip')
-      .attr('rx', d => ((d.run_id !== undefined) ? '5' : '0'))
-      .attr('ry', d => ((d.run_id !== undefined) ? '5' : '0'))
-      .style('shape-rendering', d => ((d.run_id !== undefined) ? 'auto' : 'crispEdges'))
-      .style('stroke-width', d => ((d.run_id !== undefined) ? '2' : '1'))
-      .style('stroke-opacity', d => (d.external_trigger ? '0' : '1'))
-      .attr('title', (d) => {
+      .attr('rx', function (d) {
+        return ((d.run_id !== undefined) ? '5' : '0');
+      })
+      .attr('ry', function (d) {
+        return ((d.run_id !== undefined) ? '5' : '0');
+      })
+      .style('shape-rendering', function (d) {
+        return ((d.run_id !== undefined) ? 'auto' : 'crispEdges');
+      })
+      .style('stroke-width', function (d) {
+        return ((d.run_id !== undefined) ? '2' : '1');
+      })
+      .style('stroke-opacity', function (d) {
+        return (d.external_trigger ? '0' : '1');
+      })
+      .attr('title', function (d) {
         let s = `Task_id: ${d.task_id}<br>`;
         s += `Run: ${d.execution_date}<br>`;
         if (d.run_id !== undefined) {
@@ -274,47 +305,59 @@
         }
         return s;
       })
-      .attr('x', (d, i2) => (i2 * (squareSize + squareSpacing)))
+      .attr('x', function (d, i2) {
+        return (i2 * (squareSize + squareSpacing));
+      })
       .attr('y', -squareSize / 2)
       .attr('width', 10)
       .attr('height', 10)
-      .on('mouseover', () => {
+      .on('mouseover', function () {
         d3.select(this).transition()
           .style('stroke-width', 3);
       })
-      .on('mouseout', () => {
+      .on('mouseout', function () {
         d3.select(this).transition()
-          .style('stroke-width', d => ((d.run_id !== undefined) ? '2' : '1'));
+          .style('stroke-width', function (d) {
+            return ((d.run_id !== undefined) ? '2' : '1');
+          });
       });
 
 
     // Transition nodes to their new position.
     nodeEnter.transition()
       .duration(duration)
-      .attr('transform', d => `translate(${d.y},${d.x})`)
+      .attr('transform', function (d) {
+        return `translate(${d.y},${d.x})`;
+      })
       .style('opacity', 1);
 
     node.transition()
       .duration(duration)
       .attr('class', nodeClass)
-      .attr('transform', d => `translate(${d.y},${d.x})`)
+      .attr('transform', function (d) {
+        return `translate(${d.y},${d.x})`;
+      })
       .style('opacity', 1);
 
     // Transition exiting nodes to the parent's new position.
     node.exit().transition()
       .duration(duration)
-      .attr('tranxxxsform', () => `translate(${source.y},${source.x})`)
+      .attr('tranxxxsform', function () {
+        return `translate(${source.y},${source.x})`;
+      })
       .style('opacity', 1e-6)
       .remove();
 
     // Update the links…
     const link = svg.selectAll('path.link')
-      .data(tree.links(updateNodes), d => d.target.id);
+      .data(tree.links(updateNodes), function (d) {
+        return d.target.id;
+      });
 
     // Enter any new links at the parent's previous position.
     link.enter().insert('path', 'g')
       .attr('class', 'link')
-      .attr('d', () => {
+      .attr('d', function () {
         const o = { x: source.x0, y: source.y0 };
         return diagonal({ source: o, target: o });
       })
@@ -330,14 +373,14 @@
     // Transition exiting nodes to the parent's new position.
     link.exit().transition()
       .duration(duration)
-      .attr('d', () => {
+      .attr('d', function () {
         const o = { x: source.x, y: source.y };
         return diagonal({ source: o, target: o });
       })
       .remove();
 
     // Stash the old positions for transition.
-    updateNodes.forEach((d) => {
+    updateNodes.forEach(function (d) {
       d.x0 = d.x; // eslint-disable-line no-param-reassign
       d.y0 = d.y; // eslint-disable-line no-param-reassign
     });
@@ -358,7 +401,7 @@
 
   function toggles(clickedD) {
     // Collapse nodes with the same task id
-    d3.selectAll(`[task_id='${clickedD.name}']`).each((d) => {
+    d3.selectAll(`[task_id='${clickedD.name}']`).each(function (d) {
       if (clickedD !== d && d.children) {
         // eslint-disable-next-line no-underscore-dangle
         d._children = d.children; // eslint-disable-line no-param-reassign

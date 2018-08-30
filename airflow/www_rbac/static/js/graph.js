@@ -24,15 +24,17 @@ import { generateTooltipDateTime, converAndFormatUTC } from './datetime-utils';
 // Assigning css classes based on state to nodes
 // Initiating the tooltips
 function updateNodesStates(taskInstances) {
-  $.each(taskInstances, (taskId, ti) => {
-    $('tspan').filter(() => ($(this).text() === taskId))
+  $.each(taskInstances, function (taskId, ti) {
+    $('tspan').filter(function () {
+      return $(this).text() === taskId;
+    })
       .parent()
       .parent()
       .parent()
       .parent()
       .attr('class', `node enter ${ti.state}`)
       .attr('data-toggle', 'tooltip')
-      .attr('data-original-title', () => {
+      .attr('data-original-title', function () {
         // Tooltip
         // eslint-disable-next-line no-undef
         const task = tasks[taskId]; // tasks is defined in graph.html
@@ -53,18 +55,18 @@ function updateNodesStates(taskInstances) {
 }
 
 function initRefreshButton() {
-  d3.select('#refresh_button').on('click', () => {
+  d3.select('#refresh_button').on('click', function () {
     $('#loading').css('display', 'block');
     $('div#svg_container').css('opacity', '0.2');
     // eslint-disable-next-line no-undef
     $.get(getTaskInstanceURL) // getTaskInstanceURL is defined in graph.html
-      .done((taskInstances) => {
+      .done(function (taskInstances) {
         updateNodesStates(JSON.parse(taskInstances));
         $('#loading').hide();
         $('div#svg_container').css('opacity', '1');
         $('#error').hide();
       })
-      .fail((jqxhr, textStatus, err) => {
+      .fail(function (jqxhr, textStatus, err) {
         $('#error_msg').html(`${textStatus}: ${err}`);
         $('#error').show();
         $('#loading').hide();

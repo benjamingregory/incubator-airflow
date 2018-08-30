@@ -126,22 +126,25 @@
     };
 
     // Preparation of DagreD3 data structures
-    const g = new dagreD3.graphlib.Graph().setGraph({
-      nodesep: 15,
-      ranksep: 15,
-      rankdir: arrange,
-    })
-      .setDefaultEdgeLabel(() => ({ lineInterpolate: 'basis' }));
+    const g = new dagreD3.graphlib.Graph()
+      .setGraph({
+        nodesep: 15,
+        ranksep: 15,
+        rankdir: arrange,
+      })
+      .setDefaultEdgeLabel(function () {
+        return { lineInterpolate: 'basis' };
+      });
 
     // Set all nodes and styles
-    nodes.forEach((node) => {
-  g.setNode(node.id, node.value);
-});
+    nodes.forEach(function (node) {
+      g.setNode(node.id, node.value);
+    });
 
     // Set edges
-    edges.forEach((edge) => {
-  g.setEdge(edge.u, edge.v);
-});
+    edges.forEach(function (edge) {
+      g.setEdge(edge.u, edge.v);
+    });
 
     const render = dagreD3.render();
     const svg = d3.select('svg');
@@ -151,9 +154,9 @@
 
     function setUpZoomSupport() {
       // Set up zoom support for Graph
-      const zoom = d3.behavior.zoom().on('zoom', () => {
+      const zoom = d3.behavior.zoom().on('zoom', function () {
         innerSvg.attr('transform', `translate(${d3.event.translate})`
-                            + `scale(${d3.event.scale})`);
+                      + `scale(${d3.event.scale})`);
       });
       svg.call(zoom);
     }
@@ -163,9 +166,12 @@
     // when there is no valid task instance available
     // eslint-disable-next-line no-shadow
     function injectNodeIds(tasks) {
-      $.each(tasks, (taskId) => {
-        $('tspan').filter(() => $(this).text() === taskId)
-          .parent().parent()
+      $.each(tasks, function (taskId) {
+        $('tspan').filter(function () {
+          return $(this).text() === taskId;
+        })
+          .parent()
+          .parent()
           .parent()
           .attr('id', taskId);
       });
@@ -177,7 +183,7 @@
     setUpZoomSupport();
     injectNodeIds(tasks);
 
-    d3.selectAll('g.node').on('click', (d) => {
+    d3.selectAll('g.node').on('click', function (d) {
       const task = tasks[d];
       if (task.task_type === 'SubDagOperator') call_modal(d, executionDate, true);
       else call_modal(d, executionDate);
@@ -185,19 +191,19 @@
 
     // eslint-disable-next-line no-shadow
     function highlightNodes(nodes, color) {
-      nodes.forEach((nodeid) => {
+      nodes.forEach(function (nodeid) {
         const myNode = d3.select(`#${nodeid}`).node().parentNode;
         d3.select(myNode).selectAll('rect').style('stroke', color);
       });
     }
 
-    d3.selectAll('g.node').on('mouseover', (d) => {
+    d3.selectAll('g.node').on('mouseover', function (d) {
       d3.select(this).selectAll('rect').style('stroke', highlightColor);
       highlightNodes(g.predecessors(d), upstreamColor);
       highlightNodes(g.successors(d), downstreamColor);
     });
 
-    d3.selectAll('g.node').on('mouseout', (d) => {
+    d3.selectAll('g.node').on('mouseout', function (d) {
       d3.select(this).selectAll('rect').style('stroke', null);
       highlightNodes(g.predecessors(d), null);
       highlightNodes(g.successors(d), null);
@@ -271,20 +277,20 @@
 
     d3.selectAll('div.legend_item.state')
       .style('cursor', 'pointer')
-      .on('mouseover', () => {
+      .on('mouseover', function () {
         if (!stateIsSet()) {
           const state = d3.select(this).text();
           focusState(state);
         }
       })
-      .on('mouseout', () => {
+      .on('mouseout', function () {
         if (!stateIsSet()) {
           clearFocus();
         }
       });
 
     d3.selectAll('div.legend_item.state')
-      .on('click', () => {
+      .on('click', function () {
         const state = d3.select(this).text();
         const color = d3.select(this).style('border-color');
 
@@ -298,7 +304,7 @@
         }
       });
 
-    d3.select('#searchbox').on('keyup', () => {
+    d3.select('#searchbox').on('keyup', function () {
       const s = document.getElementById('searchbox').value;
       let match = null;
 
@@ -307,7 +313,7 @@
         setFocusMap();
       }
 
-      d3.selectAll('g.nodes g.node').forEach((d) => {
+      d3.selectAll('g.nodes g.node').forEach(function (d) {
         if (s === '') {
           d3.select('g.edgePaths')
             .transition().duration(duration)

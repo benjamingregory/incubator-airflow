@@ -21,7 +21,7 @@
  * Created by janomar on 23/07/15.
  */
 
-$(document).ready(() => {
+$(document).ready(function () {
   const config = {
     jdbc: {
       hidden_fields: ['port', 'schema', 'extra'],
@@ -50,20 +50,20 @@ $(document).ready(() => {
 
   function connTypeChange(connectionType) {
     $('.hide').removeClass('hide');
-    $.each($("[id^='extra__']"), () => {
+    $.each($("[id^='extra__']"), function () {
       $(this).parent().parent().addClass('hide');
     });
-    $.each($(`[id^='extra__${connectionType}']`), () => {
+    $.each($(`[id^='extra__${connectionType}']`), function () {
       $(this).parent().parent().removeClass('hide');
     });
-    $('label[orig_text]').each(() => {
+    $('label[orig_text]').each(function () {
       $(this).text($(this).attr('orig_text'));
     });
     if (config[connectionType] !== undefined) {
-      $.each(config[connectionType].hidden_fields, (i, field) => {
+      $.each(config[connectionType].hidden_fields, function (i, field) {
         $(`#${field}`).parent().parent().addClass('hide');
       });
-      $.each(config[connectionType].relabeling, (k, v) => {
+      $.each(config[connectionType].relabeling, function (k, v) {
         const lbl = $(`label[for='${k}']`);
         lbl.attr('orig_text', lbl.text());
         $(`label[for='${k}']`).text(v);
@@ -72,7 +72,7 @@ $(document).ready(() => {
   }
 
   let connectionType = $('#conn_type').val();
-  $('#conn_type').on('change', () => {
+  $('#conn_type').on('change', function () {
     connectionType = $('#conn_type').val();
     connTypeChange(connectionType);
   });

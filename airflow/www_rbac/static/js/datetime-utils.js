@@ -23,9 +23,11 @@ export const defaultFormat = 'YYYY-MM-DD, HH:mm:ss';
 export const defaultFormatWithTZ = 'YYYY-MM-DD, HH:mm:ss z';
 
 
-const makeDateTimeHTML = (start, end) => `Started: ${start.format(defaultFormat)} <br> Ended: ${end.format(defaultFormat)} <br>`;
+const makeDateTimeHTML = function (start, end) {
+  return `Started: ${start.format(defaultFormat)} <br> Ended: ${end.format(defaultFormat)} <br>`;
+};
 
-export const generateTooltipDateTime = (startDate, endDate, dagTZ) => {
+export const generateTooltipDateTime = function (startDate, endDate, dagTZ) {
   const tzFormat = 'z (Z)';
   const localTZ = moment.tz.guess();
   startDate = moment.utc(startDate); // eslint-disable-line no-param-reassign
@@ -50,7 +52,7 @@ export const generateTooltipDateTime = (startDate, endDate, dagTZ) => {
 };
 
 
-export const converAndFormatUTC = (datetime, tz) => {
+export const converAndFormatUTC = function (datetime, tz) {
   let dateTimeObj = moment.utc(datetime);
   if (tz) dateTimeObj = dateTimeObj.tz(tz);
   return dateTimeObj.format(defaultFormatWithTZ);

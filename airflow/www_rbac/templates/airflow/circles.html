@@ -67,9 +67,15 @@ const circles = d3.select('svg')
   .append('circle')
   .attr('stroke', 'black')
   .attr('fill', 'none')
-  .attr('cx', d => sclx(d.x))
-  .attr('cy', d => scly(d.y))
-  .attr('r', () => 0);
+  .attr('cx', function (d) {
+    return sclx(d.x);
+  })
+  .attr('cy', function (d) {
+    return scly(d.y);
+  })
+  .attr('r', function () {
+    return 0;
+  });
 
 
 function toggle() {
@@ -96,7 +102,9 @@ function toggle() {
     col = 'black';
   }
   if (Math.random() > 0.8) {
-    col = () => { choose(colors); };
+    col = function () {
+      return choose(colors);
+    };
   }
 
   if (flip === 0) {
@@ -104,30 +112,54 @@ function toggle() {
 
     circles.transition()
       .duration(duration)
-      .attr('cx', d => sclx(d.x))
-      .attr('cy', d => scly(d.y))
+      .attr('cx', function (d) {
+        return sclx(d.x);
+      })
+      .attr('cy', function (d) {
+        return scly(d.y);
+      })
       .attr('stroke', col)
-      .delay(d => (randomDelay * Math.random() * 1000) + (d.x * xDelay) + (d.y * yDelay))
-      .attr('r', () => size);
+      .delay(function (d) {
+        return (randomDelay * Math.random() * 1000) + (d.x * xDelay) + (d.y * yDelay);
+      })
+      .attr('r', function () {
+        return size;
+      });
   } else {
     flip = 0;
 
     if (Math.random() > 0.6) {
       circles.transition()
         .duration(duration)
-        .attr('r', () => 0)
-        .attr('cx', () => randomX)
+        .attr('r', function () {
+          return 0;
+        })
+        .attr('cx', function () {
+          return randomX;
+        })
         .attr('stroke', col)
-        .delay((d, i) => (i / 2) * Math.random() * 5) // eslint-disable-line no-shadow
-        .attr('cy', () => randomY);
+        .delay(function (d, i) { // eslint-disable-line no-shadow
+          return (i / 2) * Math.random() * 5;
+        })
+        .attr('cy', function () {
+          return randomY;
+        });
     } else {
       circles.transition()
         .duration(duration)
-        .attr('cx', d => sclx(d.x))
-        .attr('cy', d => scly(d.y))
+        .attr('cx', function (d) {
+          return sclx(d.x);
+        })
+        .attr('cy', function (d) {
+          return scly(d.y);
+        })
         .attr('stroke', col)
-        .delay(d => (randomDelay * Math.random() * 1000) + (d.x * xDelay) + (d.y * yDelay))
-        .attr('r', () => 0);
+        .delay(function (d) {
+          return (randomDelay * Math.random() * 1000) + (d.x * xDelay) + (d.y * yDelay);
+        })
+        .attr('r', function () {
+          return 0;
+        });
     }
   }
 }

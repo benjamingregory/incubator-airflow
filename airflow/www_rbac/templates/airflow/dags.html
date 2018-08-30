@@ -237,7 +237,7 @@
 
   let searchQuery;
 
-  $('#dag_query').on('keypress', (e) => {
+  $('#dag_query').on('keypress', function (e) {
     // check for key press on ENTER (key code 13) to trigger the search
     if (e.which === ENTER_KEY_CODE) {
       searchQuery = $('#dag_query').val();
@@ -246,7 +246,7 @@
     }
   });
 
-  $('#page_size').on('change', () => {
+  $('#page_size').on('change', function () {
     const pSize = $(this).val();
     window.location = `${DAGS_INDEX}?page_size=${pSize}`;
   });
@@ -266,8 +266,8 @@
   }
 
   const allDags = $('[id^=toggle]');
-  $.each(allDags, (i, v) => {
-    $(v).change(() => {
+  $.each(allDags, function (i, v) {
+    $(v).change(function () {
       const dagId = $(v).attr('dag_id');
       let isPaused;
       if ($(v).prop('checked')) {
@@ -291,7 +291,7 @@
   $input.typeahead({
     source: [...uniqueOptionsSearch],
     autoSelect: false,
-    afterSelect: (value) => {
+    afterSelect: function (value) {
       searchQuery = value.trim();
       if (searchQuery) {
         window.location = `${DAGS_INDEX}?search=${encodeURI(searchQuery)}`;
@@ -312,8 +312,8 @@
   const circleMargin = 4;
   const strokeWidth = 2;
   const strokeWidthHover = 6;
-  d3.json('{{ url_for("Airflow.blocked") }}', (error, json) => {
-    $.each(json, () => {
+  d3.json('{{ url_for("Airflow.blocked") }}', function (error, json) {
+    $.each(json, function () {
       $(`.label.schedule.${this.dagId}`)
         .attr('title', `${this.active_dag_run}/${this.max_active_runs} active dag runs`)
         .tooltip();
@@ -356,7 +356,7 @@
     }
   }
 
-  d3.json('{{ url_for("Airflow.dag_stats") }}', (error, json) => {
+  d3.json('{{ url_for("Airflow.dag_stats") }}', function (error, json) {
     // eslint-disable-next-line no-restricted-syntax
     for (const dagId in json) {
       if (Object.prototype.hasOwnProperty.call(json, dagId)) {
@@ -368,7 +368,7 @@
           .data(states)
           .enter()
           .append('g')
-          .attr('transform', (d, i) => {
+          .attr('transform', function (d, i) {
             const x = (i * (diameter + circleMargin)) + (diameter / 2 + circleMargin);
             const y = (diameter / 2) + strokeWidthHover;
             return `translate(${x},${y})`;
@@ -380,16 +380,18 @@
           .attr('vertical-align', 'middle')
           .attr('font-size', 8)
           .attr('y', 3)
-          .text(d => (d.count > 0 ? d.count : ''));
+          .text(function (d) {
+            return (d.count > 0 ? d.count : '');
+          });
 
         g.append('circle')
-          .attr('stroke-width', (d) => {
+          .attr('stroke-width', function (d) {
             if (d.count > 0) {
               return strokeWidth;
             }
             return 1;
           })
-          .attr('stroke', (d) => {
+          .attr('stroke', function (d) {
             if (d.count > 0) {
               return d.color;
             }
@@ -397,24 +399,32 @@
           })
           .attr('fill-opacity', 0)
           .attr('r', diameter / 2)
-          .attr('title', d => d.state)
-          .attr('style', (d) => {
+          .attr('title', function (d) {
+            return d.state;
+          })
+          .attr('style', function (d) {
             if (d.count > 0) {
               return 'cursor: pointer;';
             }
             return '';
           })
-          .on('click', (d) => {
+          .on('click', function (d) {
             if (d.count > 0) {
               window.location = `{{ url_for("DagRunModelView.list") }}?_flt_3_dag_id=${d.dagId}&_flt_3_state=${d.state}`;
             }
           })
-          .on('mouseover', d => dagStatsMouseover(d))
-          .on('mouseout', d => dagStatsMouseout(d))
+          .on('mouseover', function (d) {
+            dagStatsMouseover(d);
+          })
+          .on('mouseout', function (d) {
+            dagStatsMouseout(d);
+          })
           .style('opacity', 0)
           .transition()
           .duration(500)
-          .delay((d, i) => i * 50)
+          .delay(function (d, i) {
+            return i * 50;
+          })
           .style('opacity', 1);
         d3.select('#loading').remove();
       }
@@ -428,7 +438,7 @@
     });
   });
 
-  d3.json('{{ url_for("Airflow.task_stats") }}', (error, json) => {
+  d3.json('{{ url_for("Airflow.task_stats") }}', function (error, json) {
     // eslint-disable-next-line no-restricted-syntax
     for (const dagId in json) {
       if (Object.prototype.hasOwnProperty.call(json, dagId)) {
@@ -440,7 +450,7 @@
           .data(states)
           .enter()
           .append('g')
-          .attr('transform', (d, i) => {
+          .attr('transform', function (d, i) {
             const x = (i * (diameter + circleMargin)) + (diameter / 2 + circleMargin);
             const y = (diameter / 2) + strokeWidthHover;
             return `translate(${x},${y})`;
@@ -452,16 +462,18 @@
           .attr('vertical-align', 'middle')
           .attr('font-size', 8)
           .attr('y', 3)
-          .text(d => (d.count > 0 ? d.count : ''));
+          .text(function (d) {
+            return (d.count > 0 ? d.count : '');
+          });
 
         g.append('circle')
-          .attr('stroke-width', (d) => {
+          .attr('stroke-width', function (d) {
             if (d.count > 0) {
               return strokeWidth;
             }
             return 1;
           })
-          .attr('stroke', (d) => {
+          .attr('stroke', function (d) {
             if (d.count > 0) {
               return d.color;
             }
@@ -469,24 +481,32 @@
           })
           .attr('fill-opacity', 0)
           .attr('r', diameter / 2)
-          .attr('title', d => d.state)
-          .attr('style', (d) => {
+          .attr('title', function (d) {
+            return d.state;
+          })
+          .attr('style', function (d) {
             if (d.count > 0) {
               return 'cursor:pointer;';
             }
             return '';
           })
-          .on('click', (d) => {
+          .on('click', function (d) {
             if (d.count > 0) {
               window.location = `{{ url_for("TaskInstanceModelView.list") }}?_flt_3_dag_id=${d.dagId}&_flt_3_state=${d.state}`;
             }
           })
-          .on('mouseover', d => taskStatsMouseover(d))
-          .on('mouseout', d => taskStatsMouseout(d))
+          .on('mouseover', function (d) {
+            return taskStatsMouseover(d);
+          })
+          .on('mouseout', function (d) {
+            return taskStatsMouseout(d);
+          })
           .style('opacity', 0)
           .transition()
           .duration(500)
-          .delay((d, i) => i * 50)
+          .delay(function (d, i) {
+            return i * 50;
+          })
           .style('opacity', 1);
         d3.select('#loading').remove();
       }

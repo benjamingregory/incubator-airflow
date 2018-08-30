@@ -22,14 +22,16 @@ import { defaultFormatWithTZ, moment } from './datetime-utils';
 function displayTime() {
   const utcTime = moment().utc().format(defaultFormatWithTZ);
   $('#clock')
-    // eslint-disable-next-line no-undef
-    .attr('data-original-title', () => hostName) // hostName declared in baselayout.html
+    .attr('data-original-title', function () {
+      // eslint-disable-next-line no-undef
+      return hostName; // hostName declared in baselayout.html
+    })
     .html(utcTime);
 
   setTimeout(displayTime, 1000);
 }
 
-$(document).ready(() => {
+$(document).ready(function () {
   displayTime();
   $('span').tooltip();
 });

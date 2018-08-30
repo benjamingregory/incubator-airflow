@@ -57,7 +57,9 @@ limitations under the License.
   // Recursively fetch logs from flask endpoint.
   function recurse(delay = DELAY) {
     // eslint-disable-next-line no-undef
-    return new Promise(resolve => setTimeout(resolve, delay));
+    return new Promise(function (resolve) {
+      setTimeout(resolve, delay);
+    });
   }
 
   // Enable auto tailing only when users scroll down to the bottom
@@ -89,7 +91,7 @@ limitations under the License.
           metadata: JSON.stringify(metadata),
         },
       }),
-    ).then((res) => {
+    ).then(function (res) {
       // Stop recursive call to backend when error occurs.
       if (!res) {
         document.getElementById(`loading-${tryNumber}`).style.display = 'none';
@@ -125,11 +127,13 @@ limitations under the License.
         return;
       }
       // eslint-disable-next-line consistent-return
-      return recurse().then(() => autoTailingLog(tryNumber, res.metadata, autoTailing));
+      return recurse().then(function () {
+        autoTailingLog(tryNumber, res.metadata, autoTailing);
+      });
     });
   }
 
-  $(document).ready(() => {
+  $(document).ready(function () {
     // Lazily load all past task instance logs.
     // TODO: We only need to have recursive queries for
     // latest running task instances. Currently it does not
