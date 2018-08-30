@@ -185,8 +185,11 @@
 
     d3.selectAll('g.node').on('click', function (d) {
       const task = tasks[d];
-      if (task.task_type === 'SubDagOperator') call_modal(d, executionDate, true);
-      else call_modal(d, executionDate);
+      if (task.task_type === 'SubDagOperator') {
+        call_modal(d, executionDate, true);
+      } else {
+        call_modal(d, executionDate);
+      }
     });
 
     // eslint-disable-next-line no-shadow

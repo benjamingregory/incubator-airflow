@@ -54,6 +54,8 @@ export const generateTooltipDateTime = function (startDate, endDate, dagTZ) {
 
 export const converAndFormatUTC = function (datetime, tz) {
   let dateTimeObj = moment.utc(datetime);
-  if (tz) dateTimeObj = dateTimeObj.tz(tz);
+  if (tz) {
+    dateTimeObj = dateTimeObj.tz(tz);
+  }
   return dateTimeObj.format(defaultFormatWithTZ);
 };

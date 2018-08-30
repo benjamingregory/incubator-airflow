@@ -317,8 +317,9 @@
     $('#execution_date').html(d);
     $('#myModal').modal({});
     $('#myModal').css('margin-top', '0px');
-    if (subDagId === undefined) $('#div_btn_subdag').hide();
-    else {
+    if (subDagId === undefined) {
+      $('#div_btn_subdag').hide();
+    } else {
       $('#div_btn_subdag').show();
       subDagId = `{{ dag.dag_id }}.${t}`;
     }
