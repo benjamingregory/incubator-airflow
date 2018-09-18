@@ -29,14 +29,11 @@ import zipfile
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 
-from airflow import settings
 from airflow.dag.base_dag import BaseDag, BaseDagBag
 from airflow.exceptions import AirflowException
 from airflow.settings import Stats
 from airflow.utils import timezone
 from airflow.utils.log.logging_mixin import LoggingMixin
-
-Stats = settings.Stats
 
 class SimpleDag(BaseDag):
     """
