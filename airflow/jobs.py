@@ -23,6 +23,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import getpass
+import imp
 import logging
 import multiprocessing
 import os
@@ -1671,6 +1672,22 @@ class SchedulerJob(BaseJob):
 
                 self.log.debug("Removing old import errors")
                 self.clear_nonexistent_import_errors(known_file_paths=known_file_paths)
+
+            def count_total_dags(file_paths):
+                num_dags = 0
+                for fp in file_paths:
+                    dag_file_name, _ = os.path.splitext(os.path.split(fp)[1])
+
+                    try:
+                        p_module = imp.load_source(dag_file_name, fp)
+                    except:
+                        self.log.exception("Failed to import %s while counting total number of DAGs", fp)
+                    for dag in list(p_module.__dict__.values()):
+                        if isinstance(dag, DAG):
+                            num_dags += 1
+                Stats.gauge('dagbag_size', num_dags)
+            dag_file_paths = processor_manager.file_paths
+            count_total_dags(dag_file_paths)
 
             # Kick of new processes and collect results from finished ones
             self.log.debug("Heartbeating the process manager")

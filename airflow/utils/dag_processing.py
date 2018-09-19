@@ -31,7 +31,6 @@ from collections import defaultdict
 
 from airflow.dag.base_dag import BaseDag, BaseDagBag
 from airflow.exceptions import AirflowException
-from airflow.settings import Stats
 from airflow.utils import timezone
 from airflow.utils.log.logging_mixin import LoggingMixin
 
@@ -552,9 +551,6 @@ class DagFileProcessorManager(LoggingMixin):
             )
 
             self._file_path_queue.extend(files_paths_to_queue)
-
-        # Update the number of dags in the /dags folder here
-        Stats.gauge('dagbag_size', len(files_paths_to_queue))
 
         # Start more processors if we have enough slots and files to process
         while (self._parallelism - len(self._processors) > 0 and
