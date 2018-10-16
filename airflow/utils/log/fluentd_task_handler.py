@@ -34,11 +34,12 @@ class FluentDTaskHandler(logging.Handler, LoggingMixin):
         self.closed = False
         self.handler = None
         self._name = 'FluentDHandler'
-        self._logger = sender.FluentSender('app', host='localhost', port=24224)
-        self._logger.emit('app', {
-            'from': 'test_init',
-            'to': 'test'
-        })
+        print("#######################################################")
+        self._logger = sender.FluentSender('app', host='fluentd', port=24224)
+        if not self._logger.emit('app', {'from': 'test_init','to': 'test'}):
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print(logger.last_error)
+            logger.clear_last_error() # clear stored error after handled errors
         # self._get_sender()
         # self._logger = logging.getLogger('fluent.test')
         # self._handler = handler.FluentHandler('app', host='localhost', port=24224)
