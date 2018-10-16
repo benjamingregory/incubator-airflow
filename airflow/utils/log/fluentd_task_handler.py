@@ -14,6 +14,7 @@
 import logging
 import os
 import requests
+import time
 
 from jinja2 import Template
 
@@ -33,26 +34,28 @@ class FluentDTaskHandler(logging.Handler, LoggingMixin):
         self.closed = False
         self.handler = None
         self._name = 'FluentDHandler'
-        self._logger = sender.FluentSender('app', host='host', port=24224)
+        self._logger = sender.FluentSender('app', host='localhost', port=24224)
         self._logger.emit('app', {
             'from': 'test_init',
             'to': 'test'
         })
+        # self._get_sender()
         # self._logger = logging.getLogger('fluent.test')
         # self._handler = handler.FluentHandler('app', host='localhost', port=24224)
         # self._logger.info({'from': 'userA', 'to': 'userB'})
 
     def emit(self, record):
-        if self._logger is not None:
-            self._logger.emit('app', record)
+        if self.logger is not None:
+            self.logger.emit('app', record)
+
+    def emit_with_time(self, record):
+        if self.logger is not None:
+            event_time = int(time.time())
+            self.logger.emit_with_time('app', event_time, record)
 
     def set_context(self, ti):
         super(FluentDTaskHandler, self).set_context(ti)
         self.handler = logging.getLogger('fluent.test')
-        # self._logger.emit('app', {
-        #     'from': 'test_init',
-        #     'to': 'test'
-        # })
         self.handler.setFormatter(self.formatter)
         self.handler.setLevel(self.level)
 
