@@ -13,28 +13,48 @@
 # limitations under the License.
 import logging
 import os
+import requests
 
-from airflow import configuration
+from jinja2 import Template
+
+from airflow import configuration as conf
+from airflow.configuration import AirflowConfigException
+from airflow.utils.file import mkdirs
+
 from airflow.exceptions import AirflowException
 from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow.utils.log.file_task_handler import FileTaskHandler
 from fluent import sender
 from fluent import event
+from fluent import handler
 
-class FluentDTaskHandler(logging.Handler):
+class FluentDTaskHandler(logging.Handler, LoggingMixin):
     def __init__(self):
         self.closed = False
-        self.sender = sender.setup('airflow', host='localhost', port=24224)
-        event.Event('tagged', {
-            'from': 'test',
-            'to': 'elasticsearch'
+        self.handler = None
+        self._name = 'FluentDHandler'
+        self._logger = sender.FluentSender('app', host='host', port=24224)
+        self._logger.emit('app', {
+            'from': 'test_init',
+            'to': 'test'
         })
+        # self._logger = logging.getLogger('fluent.test')
+        # self._handler = handler.FluentHandler('app', host='localhost', port=24224)
+        # self._logger.info({'from': 'userA', 'to': 'userB'})
 
-    def write(self):
-        event.Event('tagged', {
-            'from': 'test_write',
-            'to': 'elasticsearch'
-        })
+    def emit(self, record):
+        if self._logger is not None:
+            self._logger.emit('app', record)
+
+    def set_context(self, ti):
+        super(FluentDTaskHandler, self).set_context(ti)
+        self.handler = logging.getLogger('fluent.test')
+        # self._logger.emit('app', {
+        #     'from': 'test_init',
+        #     'to': 'test'
+        # })
+        self.handler.setFormatter(self.formatter)
+        self.handler.setLevel(self.level)
 
     def close(self):
         if self.closed:
