@@ -15,6 +15,8 @@ import logging
 import os
 import requests
 import time
+import json
+import pickle
 
 from jinja2 import Template
 
@@ -29,38 +31,48 @@ from fluent import sender
 from fluent import event
 from fluent import handler
 
-class FluentDTaskHandler(logging.Handler, LoggingMixin):
+class FluentDTaskHandler(logging.Handler):
     def __init__(self):
+        super(FluentDTaskHandler, self).__init__()
         self.closed = False
-        self.handler = None
         self._name = 'FluentDHandler'
-        print("#######################################################")
-        self._logger = sender.FluentSender('app', host='fluentd', port=24224)
-        if not self._logger.emit('app', {'from': 'test_init','to': 'test'}):
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print(logger.last_error)
-            logger.clear_last_error() # clear stored error after handled errors
-        # self._get_sender()
-        # self._logger = logging.getLogger('fluent.test')
-        # self._handler = handler.FluentHandler('app', host='localhost', port=24224)
-        # self._logger.info({'from': 'userA', 'to': 'userB'})
-
-    def emit(self, record):
-        if self.logger is not None:
-            self.logger.emit('app', record)
-
-    def emit_with_time(self, record):
-        if self.logger is not None:
-            event_time = int(time.time())
-            self.logger.emit_with_time('app', event_time, record)
+        self._logger = None
+        self.ti_to_json = None
+        self.handler = None
 
     def set_context(self, ti):
-        super(FluentDTaskHandler, self).set_context(ti)
-        self.handler = logging.getLogger('fluent.test')
-        self.handler.setFormatter(self.formatter)
-        self.handler.setLevel(self.level)
+        self._logger = sender.FluentSender('app', host='fluentd', port=24224)
+        self.handler = logging.NullHandler()
+        self.ti_to_json = self._process_json(ti)
+
+    def emit(self, record):
+
+        msg = record.getMessage()
+
+        if msg and self.ti_to_json is not None:
+            self.ti_to_json['message'] = msg
+
+        if self.handler is not None:
+            self.handler.emit(record)
+
+        if all([self._logger, self.ti_to_json]):
+            if not self._logger.emit('app', self.ti_to_json):
+                print(logger.last_error)
+                logger.clear_last_error()
+
+    def _process_json(self, ti):
+        # print(pickle.dumps(ti))
+        ti_info =  {'dag_id': str(ti.dag_id),
+                    'task_id': str(ti.task_id),
+                    'task': str(ti.task)}
+        # print(ti_json)
+        # return ti_json
+        # return {'test': 'test_process_json'}
+        return ti_info
 
     def close(self):
-        if self.closed:
+        if self.closed or not self._logger or not self.handler:
             return
-        self.sender.close()
+        self._logger.close()
+        self.handler.close()
+        self.closed = True
