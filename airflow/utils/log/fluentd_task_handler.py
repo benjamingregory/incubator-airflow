@@ -17,7 +17,9 @@ import requests
 import time
 import json
 import pickle
+import msgpack
 
+from io import BytesIO
 from jinja2 import Template
 
 from airflow import configuration as conf
@@ -31,48 +33,69 @@ from fluent import sender
 from fluent import event
 from fluent import handler
 
-class FluentDTaskHandler(logging.Handler):
+class FluentDTaskHandler(FileTaskHandler):
     def __init__(self):
-        super(FluentDTaskHandler, self).__init__()
-        self.closed = False
-        self._name = 'FluentDHandler'
+        super(FileTaskHandler, self).__init__()
+        # super().__init__()
         self._logger = None
         self.ti_to_json = None
         self.handler = None
+        # self.local_base = base_log_folder
+        # self.filename_template = filename_template
+        # self.filename_jinja_template = None
+        #
+        # if "{{" in self.filename_template: #jinja mode
+        #     self.filename_jinja_template = Template(self.filename_template)
 
     def set_context(self, ti):
-        self._logger = sender.FluentSender('app', host='fluentd', port=24224)
+        self._logger = sender.FluentSender('airflow', host='fluentd', port=24224)
         self.handler = logging.NullHandler()
         self.ti_to_json = self._process_json(ti)
+        self.handler.setLevel(self.level)
+        self.handler.setFormatter(self.formatter)
 
     def emit(self, record):
 
+
+        # Collect the log message
         msg = record.getMessage()
 
         if msg and self.ti_to_json is not None:
             self.ti_to_json['message'] = msg
 
+        # Dummy handler to satisfy logging checks
         if self.handler is not None:
             self.handler.emit(record)
 
+        # Send the data to the FluentSender
         if all([self._logger, self.ti_to_json]):
-            if not self._logger.emit('app', self.ti_to_json):
+            if not self._logger.emit('task_instance', self.ti_to_json):
                 print(logger.last_error)
                 logger.clear_last_error()
+    def flush(self):
+        if self.handler is not None:
+            self.handler.flush()
+
+    def close(self):
+        if self._logger is not None and self.handler is not None:
+            self._logger.close()
+            self.handler.close()
+
+    # If something crashes, this should save all of the pending logs from being lost
+    # def overflow_handler(self, pendings):
+    #     unpacker = msgpack.Unpacker(BytesIO(pendings))
+    #     for unpacked in unpacker:
+    #         print(unpacked)
 
     def _process_json(self, ti):
         # print(pickle.dumps(ti))
         ti_info =  {'dag_id': str(ti.dag_id),
                     'task_id': str(ti.task_id),
                     'task': str(ti.task)}
-        # print(ti_json)
-        # return ti_json
-        # return {'test': 'test_process_json'}
         return ti_info
 
-    def close(self):
-        if self.closed or not self._logger or not self.handler:
-            return
-        self._logger.close()
-        self.handler.close()
-        self.closed = True
+    def _read(self, ti, try_number):
+        return super()._read(ti, try_number)
+
+    def read(self, task_instance, try_number=None):
+        return super().read(task_instance, try_number)
