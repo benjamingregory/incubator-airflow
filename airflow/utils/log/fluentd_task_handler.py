@@ -42,7 +42,7 @@ class FluentDTaskHandler(FileTaskHandler):
     host machine.
     """
 
-    def __init__(self, base_log_folder, filename_template):
+    def __init__(self, base_log_folder, filename_template, hostname, fluent_tag, fluent_port):
         """
         :param base_log_folder: Base log folder to place logs to read from for Flask
         :param filename_template: template filename string
@@ -50,6 +50,9 @@ class FluentDTaskHandler(FileTaskHandler):
         super(FileTaskHandler, self).__init__()
         self._logger = None
         self.ti_to_json = None
+        self.hostname = hostname
+        self.fluent_tag = fluent_tag
+        self.fluent_port = fluent_port
         self.handler = None
 
         # This is from the file task handler to replicate reading logs in Web UI
@@ -66,7 +69,7 @@ class FluentDTaskHandler(FileTaskHandler):
         Parse ti information into usable JSON.
         :param ti: task instance object
         """
-        self._logger = sender.FluentSender('airflow', host='fluentd', port=24224)
+        self._logger = sender.FluentSender(self.fluent_tag, host=self.hostname, port=self.fluent_port)
         self.ti_to_json = self._process_json(ti)
 
         local_loc = self._init_file(ti)
