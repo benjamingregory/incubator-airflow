@@ -34,25 +34,29 @@ from fluent import event
 from fluent import handler
 
 class FluentDTaskHandler(FileTaskHandler):
-    def __init__(self):
+    def __init__(self, base_log_folder, filename_template):
         super(FileTaskHandler, self).__init__()
         # super().__init__()
         self._logger = None
         self.ti_to_json = None
         self.handler = None
-        # self.local_base = base_log_folder
-        # self.filename_template = filename_template
-        # self.filename_jinja_template = None
-        #
-        # if "{{" in self.filename_template: #jinja mode
-        #     self.filename_jinja_template = Template(self.filename_template)
+
+        # This is from the file task handler to replicate reading logs in Web UI
+        self.local_base = base_log_folder
+        self.filename_template = filename_template
+        self.filename_jinja_template = None
+
+        if "{{" in self.filename_template: #jinja mode
+            self.filename_jinja_template = Template(self.filename_template)
 
     def set_context(self, ti):
         self._logger = sender.FluentSender('airflow', host='fluentd', port=24224)
-        self.handler = logging.NullHandler()
         self.ti_to_json = self._process_json(ti)
-        self.handler.setLevel(self.level)
+
+        local_loc = self._init_file(ti)
+        self.handler = logging.FileHandler(local_loc)
         self.handler.setFormatter(self.formatter)
+        self.handler.setLevel(self.level)
 
     def emit(self, record):
 
@@ -93,6 +97,14 @@ class FluentDTaskHandler(FileTaskHandler):
                     'task_id': str(ti.task_id),
                     'task': str(ti.task)}
         return ti_info
+
+    # Inherit from FileTaskHandler to allow reading logs in Web UI
+
+    def _render_filename(self, ti, try_number):
+        return super()._render_filename(ti, try_number)
+
+    def _init_file(self, ti):
+        return super()._init_file(ti)
 
     def _read(self, ti, try_number):
         return super()._read(ti, try_number)
