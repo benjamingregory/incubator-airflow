@@ -34,9 +34,20 @@ from fluent import event
 from fluent import handler
 
 class FluentDTaskHandler(FileTaskHandler):
+    """
+    FluentDTaskHandler is a python log handler that inherits from
+    the FileTaskHandler. It receives task instance context and sends
+    task instance logs to the FluentSender through the exposed TCP port.
+    To display logs on the Web UI, it reads logs from the task instance's
+    host machine.
+    """
+
     def __init__(self, base_log_folder, filename_template):
+        """
+        :param base_log_folder: Base log folder to place logs to read from for Flask
+        :param filename_template: template filename string
+        """
         super(FileTaskHandler, self).__init__()
-        # super().__init__()
         self._logger = None
         self.ti_to_json = None
         self.handler = None
@@ -46,10 +57,15 @@ class FluentDTaskHandler(FileTaskHandler):
         self.filename_template = filename_template
         self.filename_jinja_template = None
 
-        if "{{" in self.filename_template: #jinja mode
+        if "{{" in self.filename_template:
             self.filename_jinja_template = Template(self.filename_template)
 
     def set_context(self, ti):
+        """
+        Provide task_instance context. Initialize FluentSender on port 24224.
+        Parse ti information into usable JSON.
+        :param ti: task instance object
+        """
         self._logger = sender.FluentSender('airflow', host='fluentd', port=24224)
         self.ti_to_json = self._process_json(ti)
 
@@ -59,15 +75,17 @@ class FluentDTaskHandler(FileTaskHandler):
         self.handler.setLevel(self.level)
 
     def emit(self, record):
-
-
-        # Collect the log message
+        """
+        From the Log Record object, collect the message and add it to the parsed
+        task instance JSON from set_context.
+        :param record: log record object
+        """
         msg = record.getMessage()
 
         if msg and self.ti_to_json is not None:
             self.ti_to_json['message'] = msg
 
-        # Dummy handler to satisfy logging checks
+        # File handler to satisfy logging checks and move logs to Web UI
         if self.handler is not None:
             self.handler.emit(record)
 
@@ -76,6 +94,7 @@ class FluentDTaskHandler(FileTaskHandler):
             if not self._logger.emit('task_instance', self.ti_to_json):
                 print(logger.last_error)
                 logger.clear_last_error()
+
     def flush(self):
         if self.handler is not None:
             self.handler.flush()
@@ -92,6 +111,9 @@ class FluentDTaskHandler(FileTaskHandler):
     #         print(unpacked)
 
     def _process_json(self, ti):
+        """
+        Turn task instance object into JSON object
+        """
         # print(pickle.dumps(ti))
         ti_info =  {'dag_id': str(ti.dag_id),
                     'task_id': str(ti.task_id),
