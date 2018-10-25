@@ -25,7 +25,6 @@ from airflow import configuration as conf
 from airflow.configuration import AirflowConfigException
 from airflow.utils.file import mkdirs
 
-# LogRecord labels to include in the output
 RECORD_LABELS = ['asctime', 'levelname', 'filename', 'lineno', 'message']
 
 class modifiedStdout():
@@ -48,10 +47,8 @@ class JsonFormatter(logging.Formatter):
         self.processedTask = processedTask
     def format(self, record):
         recordObject = {label: getattr(record, label) for label in RECORD_LABELS}
-
-        # Merge LogRecord Object and self.processedTask Object
         recordObject = {**recordObject, **self.processedTask}
-        return json.dumps(recordObject, indent=4)
+        return json.dumps(recordObject)
 
 class StdoutTaskHandler(logging.Handler):
     """
@@ -75,28 +72,25 @@ class StdoutTaskHandler(logging.Handler):
         Parse task instance information into the task instance attribute.
         :param ti: task instance object
         """
-        # Save the context of stdout so child process can call
         self.writer = modifiedStdout()
         sys.stdout = self.writer
 
-        # Parse important task information out of task instance object
         self.taskInstance = self._process_taskInstance(ti)
 
-        # Set context for handler, including formatter and logging level
         self.handler = logging.StreamHandler(stream=sys.stdout)
         self.handler.setFormatter(JsonFormatter(self.taskInstance))
         self.handler.setLevel(self.level)
 
     def emit(self, record):
-
-        # It is the Formatter's responsibility to set 'asctime' and 'message'
+        """
+        It is the Formatter's responsibility to set 'asctime' and 'message'.
+        Without calling `format` on the LogRecord, these fields will be undefined.
+        """
         self.formatter.format(record)
-
         if self.handler is not None:
             self.handler.emit(record)
 
     def flush(self):
-
         if self.handler is not None:
             self.handler.flush()
 
