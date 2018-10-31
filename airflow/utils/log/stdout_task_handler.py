@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import elasticsearch
 import io
 import json
 import logging
@@ -19,11 +20,17 @@ import os
 import requests
 import sys
 
+from elasticsearch_dsl import Search
 from jinja2 import Template
+from airflow.utils import timezone
+
 
 from airflow import configuration as conf
 from airflow.configuration import AirflowConfigException
 from airflow.utils.file import mkdirs
+
+from airflow.utils.log.es_task_handler import ElasticsearchTaskHandler
+
 
 RECORD_LABELS = ['asctime', 'levelname', 'filename', 'lineno', 'message']
 
@@ -50,21 +57,24 @@ class JsonFormatter(logging.Formatter):
         recordObject = {**recordObject, **self.processedTask}
         return json.dumps(recordObject)
 
-class StdoutTaskHandler(logging.Handler):
+class StdoutTaskHandler(ElasticsearchTaskHandler):
     """
     StdoutTaskHAndler is a python log handler that receives task
     instance context and sends task instance logs directly to the
     standard out of the running process.
     """
-    def __init__(self):
+    def __init__(self, log_id_template, filename_template, end_of_log_mark, host):
         """
         :param taskInstance: unique identifier for task instance information (dag_id, task_id, execution_date, and try_number)
         :param writer: object to modify the stdout to allow child processes to write to stdout
         """
-        super(StdoutTaskHandler, self).__init__()
+        super(StdoutTaskHandler, self).__init__(log_id_template, filename_template, end_of_log_mark, host)
         self.handler = None
         self.taskInstance = None
         self.writer = None
+        self.closed = False
+
+        self.client = elasticsearch.Elasticsearch(['elasticsearch:9200'])
 
     def set_context(self, ti):
         """
@@ -108,3 +118,21 @@ class StdoutTaskHandler(logging.Handler):
                     'execution_date': str(ti.execution_date),
                     'try_number': str(ti.try_number)}
         return ti_info
+
+    # Overwrite file_task_handler's read function, because elastic task handler's _read returns a tuple
+    def read(self, task_instance, try_number=None):
+        if try_number is None:
+            next_try = task_instance.next_try_number
+            try_numbers = list(range(1, next_try))
+        elif try_number < 1:
+            logs = [
+                'Error fetching the logs. Try number {} is invalid.'.format(try_number),
+            ]
+            return logs
+        else:
+            try_numbers = [try_number]
+
+        logs = [''] * len(try_numbers)
+        for i, try_number in enumerate(try_numbers):
+            logs[i] += self._read(task_instance, try_number)[0]
+        return logs
