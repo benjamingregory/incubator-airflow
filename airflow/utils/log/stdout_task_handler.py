@@ -30,6 +30,7 @@ from airflow.configuration import AirflowConfigException
 from airflow.utils.file import mkdirs
 
 from airflow.utils.log.es_task_handler import ElasticsearchTaskHandler
+from airflow.utils.helpers import parse_template_string
 
 
 RECORD_LABELS = ['asctime', 'levelname', 'filename', 'lineno', 'message']
@@ -38,6 +39,8 @@ class modifiedStdout():
     """
     Class to keep track of the stdout context when running in child process.
     """
+    def __init__(self):
+        self.closed = False
     def write(self, string):
         sys.__stdout__.write(string)
 
@@ -72,9 +75,16 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
         self.handler = None
         self.taskInstance = None
         self.writer = None
-        self.closed = False
 
         self.client = elasticsearch.Elasticsearch(['elasticsearch:9200'])
+        self.log_id_template, self.log_id_jinja_template = \
+            parse_template_string(log_id_template)
+        self.mark_end_on_close = True
+        self.end_of_log_mark = end_of_log_mark
+
+        self.logMetadata = None
+        self.closed = False
+
 
     def set_context(self, ti):
         """
@@ -82,6 +92,8 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
         Parse task instance information into the task instance attribute.
         :param ti: task instance object
         """
+        # super(StdoutTaskHandler, self).set_context(ti)
+
         self.writer = modifiedStdout()
         sys.stdout = self.writer
 
@@ -90,6 +102,7 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
         self.handler = logging.StreamHandler(stream=sys.stdout)
         self.handler.setFormatter(JsonFormatter(self.taskInstance))
         self.handler.setLevel(self.level)
+
 
     def emit(self, record):
         """
@@ -105,9 +118,31 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
             self.handler.flush()
 
     def close(self):
+
+        # Prevent uploading log to remote storage multiple times
+        if self.closed:
+            return
+
+        if not self.mark_end_on_close:
+            self.closed = True
+            return
+
+        # Just in case the context of handler was not set
+        if self.handler is None:
+            self.closed = True
+            return
+
+        if self.handler.stream is None or self.handler.stream.closed:
+            self.handler.stream = self.handler._open()
+
+        self.handler.stream.write(self.end_of_log_mark)
+
         if self.handler is not None:
+            self.writer.closed = True
             self.handler.close()
             sys.stdout = sys.__stdout__
+
+        self.closed = True
 
     def _process_taskInstance(self, ti):
         """
@@ -119,8 +154,13 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
                     'try_number': str(ti.try_number)}
         return ti_info
 
-    # Overwrite file_task_handler's read function, because elastic task handler's _read returns a tuple
     def read(self, task_instance, try_number=None):
+        """
+        Read logs of a given task instance from elasticsearch.
+        :param task_instance: task instance object
+        :param try_number: task instance try_number to read logs from. If None,
+                           it will start at 1.
+        """
         if try_number is None:
             next_try = task_instance.next_try_number
             try_numbers = list(range(1, next_try))
@@ -133,6 +173,10 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
             try_numbers = [try_number]
 
         logs = [''] * len(try_numbers)
+        self.logMetadata = [{}] * len(try_numbers)
         for i, try_number in enumerate(try_numbers):
-            logs[i] += self._read(task_instance, try_number)[0]
+            log, metadata = self._read(task_instance, try_number, self.logMetadata[i])
+            logs[i] += log
+            self.logMetadata[i] = metadata
+
         return logs

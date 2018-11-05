@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 
 import logging
 import os
+import pendulum
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
@@ -28,6 +29,16 @@ from airflow.logging_config import configure_logging
 
 log = logging.getLogger(__name__)
 
+TIMEZONE = pendulum.timezone('UTC')
+try:
+    tz = conf.get("core", "default_timezone")
+    if tz == "system":
+        TIMEZONE = pendulum.local_timezone()
+    else:
+        TIMEZONE = pendulum.timezone(tz)
+except Exception:
+    pass
+log.info("Configured default timezone %s" % TIMEZONE)
 
 class DummyStatsLogger(object):
     @classmethod

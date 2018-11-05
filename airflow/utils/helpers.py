@@ -207,7 +207,7 @@ def kill_using_shell(logger, pid, signal=signal.SIGTERM):
 def kill_process_tree(logger, pid, timeout=DEFAULT_TIME_TO_WAIT_AFTER_SIGTERM):
     """
     TODO(saguziel): also kill the root process after killing descendants
-  
+
     Kills the process's descendants. Kills using the `kill`
     shell command so that it can change users. Note: killing via PIDs
     has the potential to the wrong process if the process dies and the
@@ -379,3 +379,9 @@ class AirflowImporter(object):
             return loaded_attribute
 
         raise AttributeError
+
+def parse_template_string(template_string):
+    if "{{" in template_string:  # jinja mode
+        return None, Template(template_string)
+    else:
+        return template_string, None
