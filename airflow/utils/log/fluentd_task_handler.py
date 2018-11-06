@@ -27,7 +27,6 @@ from airflow.configuration import AirflowConfigException
 from airflow.utils.file import mkdirs
 
 from airflow.exceptions import AirflowException
-from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow.utils.log.file_task_handler import FileTaskHandler
 from fluent import sender
 from fluent import event
@@ -63,12 +62,20 @@ class FluentDTaskHandler(FileTaskHandler):
         if "{{" in self.filename_template:
             self.filename_jinja_template = Template(self.filename_template)
 
+        # child = os.getpid()
+        # parent = os.getppid()
+        # print(f"This is a fluentD log handler instance on child pid {child}")
+        # print(f"This is a fluentD log handler instance on parent pid {parent}")
+
     def set_context(self, ti):
         """
         Provide task_instance context. Initialize FluentSender on port 24224.
         Parse ti information into usable JSON.
         :param ti: task instance object
         """
+        # child = os.getpid()
+        # parent = os.getppid()
+        # print(f"Im setting the context in child pid {child} and parent pid {parent}")
         self._logger = sender.FluentSender(self.fluent_tag, host=self.hostname, port=self.fluent_port)
         self.ti_to_json = self._process_json(ti)
 
