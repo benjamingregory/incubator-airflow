@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -133,10 +133,27 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         :type offset: str
         """
 
+        log_components = log_id.split("-")
+        dag_id = log_components[0]
+        task_id = log_components[1]
+        execution_date = '_'.join(log_components[2:5]).replace(":", "_").replace("-", "_").replace("+", "_")
+        try_number = str(int(log_components[5]))
+
+        new_log_id = f"{dag_id}_{task_id}_{execution_date}_{try_number}"
+
+        # NOTE: Debugging
+        print("####################The log_id being queried####################")
+        print(new_log_id)
+
         # Offset is the unique key for sorting logs given log_id.
         s = Search(using=self.client) \
-            .query('match', log_id=log_id) \
+            .query('match', log_id=new_log_id) \
             .sort('offset')
+
+        # NOTE: Debugging
+        print("####################Search Hits####################")
+        for hit in s:
+            print(hit.log_id)
 
         s = s.filter('range', offset={'gt': offset})
 
