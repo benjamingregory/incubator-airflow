@@ -54,7 +54,7 @@ LOG_ID_TEMPLATE = conf.get('elasticsearch', 'ELASTICSEARCH_LOG_ID_TEMPLATE')
 
 END_OF_LOG_MARK = conf.get('elasticsearch', 'ELASTICSEARCH_END_OF_LOG_MARK')
 
-DEFAULT_LOGGING_CONFIG = {
+LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
@@ -96,7 +96,7 @@ DEFAULT_LOGGING_CONFIG = {
             'propagate': False,
         },
         'airflow.task': {
-            'handlers': ['task'],
+            'handlers': ['stdout'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
@@ -181,10 +181,10 @@ REMOTE_HANDLERS = {
 REMOTE_LOGGING = conf.get('core', 'remote_logging')
 
 if REMOTE_LOGGING and REMOTE_BASE_LOG_FOLDER.startswith('s3://'):
-        DEFAULT_LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['s3'])
+        LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['s3'])
 elif REMOTE_LOGGING and REMOTE_BASE_LOG_FOLDER.startswith('gs://'):
-        DEFAULT_LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['gcs'])
+        LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['gcs'])
 elif REMOTE_LOGGING and REMOTE_BASE_LOG_FOLDER.startswith('wasb'):
-        DEFAULT_LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['wasb'])
+        LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['wasb'])
 elif REMOTE_LOGGING and ELASTICSEARCH_HOST:
-        DEFAULT_LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['elasticsearch'])
+        LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['elasticsearch'])
