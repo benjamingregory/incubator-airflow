@@ -76,13 +76,12 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
         self.taskInstance = None
         self.writer = None
 
-        self.client = elasticsearch.Elasticsearch(['elasticsearch:9200'])
+        self.client = elasticsearch.Elasticsearch([host])
         self.log_id_template, self.log_id_jinja_template = \
             parse_template_string(log_id_template)
         self.mark_end_on_close = True
         self.end_of_log_mark = end_of_log_mark
 
-        self.logMetadata = None
         self.closed = False
 
 
@@ -154,7 +153,7 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
                     'try_number': str(ti.try_number)}
         return ti_info
 
-    def read(self, task_instance, try_number=None):
+    def read(self, task_instance, try_number=None, metadata=None):
         """
         Read logs of a given task instance from elasticsearch.
         :param task_instance: task instance object
@@ -173,10 +172,10 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
             try_numbers = [try_number]
 
         logs = [''] * len(try_numbers)
-        self.logMetadata = [{}] * len(try_numbers)
+        metadatas = [{}] * len(try_numbers)
         for i, try_number in enumerate(try_numbers):
-            log, metadata = self._read(task_instance, try_number, self.logMetadata[i])
+            log, metadata = self._read(task_instance, try_number, metadata)
             logs[i] += log
-            self.logMetadata[i] = metadata
+            metadatas[i] = metadata
 
-        return logs
+        return logs, metadatas
