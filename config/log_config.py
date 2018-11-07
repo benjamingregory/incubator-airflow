@@ -117,12 +117,12 @@ LOGGING_CONFIG = {
             'propagate': True,
         },
         'airflow.task': {
-            'handlers': ['file.task'],
+            'handlers': ['stdout.task'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
         'airflow.task_runner': {
-            'handlers': ['file.task'],
+            'handlers': ['stdout.task'],
             'level': LOG_LEVEL,
             'propagate': True,
         },
