@@ -134,7 +134,8 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
         if self.handler.stream is None or self.handler.stream.closed:
             self.handler.stream = self.handler._open()
 
-        self.handler.stream.write(self.end_of_log_mark)
+        if self.closed == False:
+            self.handler.stream.write(self.end_of_log_mark)
 
         if self.handler is not None:
             self.writer.closed = True
