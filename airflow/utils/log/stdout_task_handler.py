@@ -117,9 +117,8 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
             self.handler.flush()
 
     def close(self):
-
         # Prevent uploading log to remote storage multiple times
-        if self.closed:
+        if self.closed == True:
             return
 
         if not self.mark_end_on_close:
@@ -134,8 +133,7 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
         if self.handler.stream is None or self.handler.stream.closed:
             self.handler.stream = self.handler._open()
 
-        if self.closed == False:
-            self.handler.stream.write(self.end_of_log_mark)
+        self.handler.stream.write(self.end_of_log_mark)
 
         if self.handler is not None:
             self.writer.closed = True
@@ -176,7 +174,13 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
         metadatas = [{}] * len(try_numbers)
         for i, try_number in enumerate(try_numbers):
             log, metadata = self._read(task_instance, try_number, metadata)
-            logs[i] += log
-            metadatas[i] = metadata
+
+            # If there's a log, then we don't want to keep checking. Set end_of_log
+            # to True, set the mark_end_on_close to False and return the log and metadata
+            if log:
+                logs[i] += log
+                metadata['end_of_log'] = True
+                self.mark_end_on_close = False
+                metadatas[i] = metadata
 
         return logs, metadatas
