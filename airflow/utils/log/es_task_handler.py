@@ -142,8 +142,8 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         new_log_id = f"{dag_id}_{task_id}_{execution_date}_{try_number}"
 
         # NOTE: Debugging
-        print("####################The log_id being queried####################")
-        print(new_log_id)
+        # print("####################The log_id being queried####################")
+        # print(new_log_id)
 
         # Offset is the unique key for sorting logs given log_id.
         s = Search(using=self.client) \
@@ -151,9 +151,9 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
             .sort('offset')
 
         # NOTE: Debugging
-        print("####################Search Hits####################")
-        for hit in s:
-            print(hit.log_id)
+        # print("####################Search Hits####################")
+        # for hit in s:
+        #     print(hit.log_id)
 
         s = s.filter('range', offset={'gt': offset})
 

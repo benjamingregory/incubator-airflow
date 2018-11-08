@@ -87,7 +87,7 @@ LOGGING_CONFIG = {
             'filename_template': FILENAME_TEMPLATE,
             'end_of_log_mark': END_OF_LOG_MARK,
             'host': ELASTICSEARCH_HOST
-        },
+        }
     },
     'loggers': {
         'airflow.processor': {
@@ -176,15 +176,25 @@ REMOTE_HANDLERS = {
             'host': ELASTICSEARCH_HOST,
         },
     },
+    # 'elasticsearch_stdout_task': {
+    #     'task': {
+    #         'class': 'airflow.utils.log.stdout_task_handler.StdoutTaskHandler',
+    #         'formatter': 'airflow',
+    #         'log_id_template': LOG_ID_TEMPLATE,
+    #         'filename_template': FILENAME_TEMPLATE,
+    #         'end_of_log_mark': END_OF_LOG_MARK,
+    #         'host': ELASTICSEARCH_HOST
+    #     },
+    # },
 }
 
 REMOTE_LOGGING = conf.get('core', 'remote_logging')
 
-if REMOTE_LOGGING and REMOTE_BASE_LOG_FOLDER.startswith('s3://'):
+if REMOTE_LOGGING == True and REMOTE_BASE_LOG_FOLDER.startswith('s3://'):
         LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['s3'])
-elif REMOTE_LOGGING and REMOTE_BASE_LOG_FOLDER.startswith('gs://'):
+elif REMOTE_LOGGING == True and REMOTE_BASE_LOG_FOLDER.startswith('gs://'):
         LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['gcs'])
-elif REMOTE_LOGGING and REMOTE_BASE_LOG_FOLDER.startswith('wasb'):
+elif REMOTE_LOGGING == True and REMOTE_BASE_LOG_FOLDER.startswith('wasb'):
         LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['wasb'])
-elif REMOTE_LOGGING and ELASTICSEARCH_HOST:
+elif REMOTE_LOGGING == True and ELASTICSEARCH_HOST:
         LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['elasticsearch'])
