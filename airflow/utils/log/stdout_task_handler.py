@@ -177,6 +177,9 @@ class StdoutTaskHandler(ElasticsearchTaskHandler):
 
             # If there's a log, then we don't want to keep checking. Set end_of_log
             # to True, set the mark_end_on_close to False and return the log and metadata
+            # This will prevent the recursion from happening in the ti_log.html script
+            # and will therefore prevent constantly checking ES for updates, since we've
+            # fetched what we're looking for
             if log:
                 logs[i] += log
                 metadata['end_of_log'] = True
