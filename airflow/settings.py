@@ -26,8 +26,9 @@ import atexit
 import logging
 import os
 import pendulum
+import socket
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, exc
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import NullPool
 
@@ -46,7 +47,7 @@ try:
         TIMEZONE = pendulum.local_timezone()
     else:
         TIMEZONE = pendulum.timezone(tz)
-except:
+except Exception:
     pass
 log.info("Configured default timezone %s" % TIMEZONE)
 
@@ -71,16 +72,17 @@ class DummyStatsLogger(object):
 
 Stats = DummyStatsLogger
 
-if conf.getboolean('scheduler', 'statsd_on'):
-    from statsd import StatsClient
+try:
+    if conf.getboolean('scheduler', 'statsd_on'):
+        from statsd import StatsClient
 
-    statsd = StatsClient(
-        host=conf.get('scheduler', 'statsd_host'),
-        port=conf.getint('scheduler', 'statsd_port'),
-        prefix=conf.get('scheduler', 'statsd_prefix'))
-    Stats = statsd
-else:
-    Stats = DummyStatsLogger
+        statsd = StatsClient(
+            host=conf.get('scheduler', 'statsd_host'),
+            port=conf.getint('scheduler', 'statsd_port'),
+            prefix=conf.get('scheduler', 'statsd_prefix'))
+        Stats = statsd
+except (socket.gaierror, ImportError):
+    log.warning("Could not configure StatsClient, using DummyStatsLogger instead.")
 
 HEADER = """\
   ____________       _____________
@@ -153,7 +155,7 @@ def configure_orm(disable_connection_pool=False):
         engine_args['poolclass'] = NullPool
         log.debug("settings.configure_orm(): Using NullPool")
     elif 'sqlite' not in SQL_ALCHEMY_CONN:
-        # Engine args not supported by sqlite.
+        # Pool size engine args not supported by sqlite.
         # If no config value is defined for the pool size, select a reasonable value.
         # 0 means no limit, which could lead to exceeding the Database connection limit.
         try:
@@ -175,12 +177,25 @@ def configure_orm(disable_connection_pool=False):
         engine_args['pool_size'] = pool_size
         engine_args['pool_recycle'] = pool_recycle
 
+    try:
+        # Allow the user to specify an encoding for their DB otherwise default
+        # to utf-8 so jobs & users with non-latin1 characters can still use
+        # us.
+        engine_args['encoding'] = conf.get('core', 'SQL_ENGINE_ENCODING')
+    except conf.AirflowConfigException:
+        engine_args['encoding'] = 'utf-8'
+    # For Python2 we get back a newstr and need a str
+    engine_args['encoding'] = engine_args['encoding'].__str__()
+
     engine = create_engine(SQL_ALCHEMY_CONN, **engine_args)
     reconnect_timeout = conf.getint('core', 'SQL_ALCHEMY_RECONNECT_TIMEOUT')
     setup_event_handlers(engine, reconnect_timeout)
 
     Session = scoped_session(
-        sessionmaker(autocommit=False, autoflush=False, bind=engine))
+        sessionmaker(autocommit=False,
+                     autoflush=False,
+                     bind=engine,
+                     expire_on_commit=False))
 
 
 def dispose_orm():
@@ -211,6 +226,26 @@ def configure_adapters():
         pass
 
 
+def validate_session():
+    try:
+        worker_precheck = conf.getboolean('core', 'worker_precheck')
+    except conf.AirflowConfigException:
+        worker_precheck = False
+    if not worker_precheck:
+        return True
+    else:
+        check_session = sessionmaker(bind=engine)
+        session = check_session()
+        try:
+            session.execute("select 1")
+            conn_status = True
+        except exc.DBAPIError as err:
+            log.error(err)
+            conn_status = False
+        session.close()
+        return conn_status
+
+
 def configure_action_logging():
     """
     Any additional configuration (register callback) for airflow.utils.action_loggers
@@ -221,9 +256,9 @@ def configure_action_logging():
 
 
 try:
-    from airflow_local_settings import *
+    from airflow_local_settings import *  # noqa F403 F401
     log.info("Loaded airflow_local_settings.")
-except:
+except Exception:
     pass
 
 configure_logging()

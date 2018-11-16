@@ -18,12 +18,10 @@
 # under the License.
 
 import unittest
-import warnings
 
 from airflow.contrib.operators.bigquery_operator import \
-    BigQueryCreateExternalTableOperator, \
-    BigQueryOperator, \
-    BigQueryCreateEmptyTableOperator
+    BigQueryCreateExternalTableOperator, BigQueryCreateEmptyTableOperator, \
+    BigQueryDeleteDatasetOperator, BigQueryCreateEmptyDatasetOperator
 
 try:
     from unittest import mock
@@ -40,18 +38,6 @@ TEST_TABLE_ID = 'test-table-id'
 TEST_GCS_BUCKET = 'test-bucket'
 TEST_GCS_DATA = ['dir1/*.csv']
 TEST_SOURCE_FORMAT = 'CSV'
-
-
-class BigQueryOperatorTest(unittest.TestCase):
-    def test_bql_deprecation_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            BigQueryOperator(
-                task_id='test_deprecation_warning_for_bql',
-                bql='select * from test_table'
-            )
-        self.assertIn(
-            'Deprecated parameter `bql`',
-            w[0].message.args[0])
 
 
 class BigQueryCreateEmptyTableOperatorTest(unittest.TestCase):
@@ -73,7 +59,8 @@ class BigQueryCreateEmptyTableOperatorTest(unittest.TestCase):
                 project_id=TEST_PROJECT_ID,
                 table_id=TEST_TABLE_ID,
                 schema_fields=None,
-                time_partitioning={}
+                time_partitioning={},
+                labels=None
             )
 
 
@@ -112,5 +99,47 @@ class BigQueryCreateExternalTableOperatorTest(unittest.TestCase):
                 quote_character=None,
                 allow_quoted_newlines=False,
                 allow_jagged_rows=False,
-                src_fmt_configs={}
+                src_fmt_configs={},
+                labels=None
+            )
+
+
+class BigQueryDeleteDatasetOperatorTest(unittest.TestCase):
+    @mock.patch('airflow.contrib.operators.bigquery_operator.BigQueryHook')
+    def test_execute(self, mock_hook):
+        operator = BigQueryDeleteDatasetOperator(
+            task_id=TASK_ID,
+            dataset_id=TEST_DATASET,
+            project_id=TEST_PROJECT_ID
+        )
+
+        operator.execute(None)
+        mock_hook.return_value \
+            .get_conn() \
+            .cursor() \
+            .delete_dataset \
+            .assert_called_once_with(
+                dataset_id=TEST_DATASET,
+                project_id=TEST_PROJECT_ID
+            )
+
+
+class BigQueryCreateEmptyDatasetOperatorTest(unittest.TestCase):
+    @mock.patch('airflow.contrib.operators.bigquery_operator.BigQueryHook')
+    def test_execute(self, mock_hook):
+        operator = BigQueryCreateEmptyDatasetOperator(
+            task_id=TASK_ID,
+            dataset_id=TEST_DATASET,
+            project_id=TEST_PROJECT_ID
+        )
+
+        operator.execute(None)
+        mock_hook.return_value \
+            .get_conn() \
+            .cursor() \
+            .create_empty_dataset \
+            .assert_called_once_with(
+                dataset_id=TEST_DATASET,
+                project_id=TEST_PROJECT_ID,
+                dataset_reference={}
             )

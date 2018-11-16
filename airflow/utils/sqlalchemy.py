@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -37,12 +37,10 @@ log = LoggingMixin().log
 utc = pendulum.timezone('UTC')
 
 
-def setup_event_handlers(
-        engine,
-        reconnect_timeout_seconds,
-        initial_backoff_seconds=0.2,
-        max_backoff_seconds=120):
-
+def setup_event_handlers(engine,
+                         reconnect_timeout_seconds,
+                         initial_backoff_seconds=0.2,
+                         max_backoff_seconds=120):
     @event.listens_for(engine, "engine_connect")
     def ping_connection(connection, branch):
         """
@@ -99,7 +97,6 @@ def setup_event_handlers(
             finally:
                 # restore "close with result"
                 connection.should_close_with_result = save_should_close_with_result
-
 
     @event.listens_for(engine, "connect")
     def connect(dbapi_connection, connection_record):

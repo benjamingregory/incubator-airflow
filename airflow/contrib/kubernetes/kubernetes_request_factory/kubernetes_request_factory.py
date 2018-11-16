@@ -85,8 +85,9 @@ class KubernetesRequestFactory:
 
     @staticmethod
     def extract_node_selector(pod, req):
-        if len(pod.node_selectors) > 0:
-            req['spec']['nodeSelector'] = pod.node_selectors
+        req['spec']['nodeSelector'] = req['spec'].get('nodeSelector', {})
+        for k, v in six.iteritems(pod.node_selectors):
+            req['spec']['nodeSelector'][k] = v
 
     @staticmethod
     def attach_volumes(pod, req):
@@ -175,8 +176,18 @@ class KubernetesRequestFactory:
             req['spec']['serviceAccountName'] = pod.service_account_name
 
     @staticmethod
+    def extract_hostnetwork(pod, req):
+        if pod.hostnetwork:
+            req['spec']['hostNetwork'] = pod.hostnetwork
+
+    @staticmethod
     def extract_image_pull_secrets(pod, req):
         if pod.image_pull_secrets:
             req['spec']['imagePullSecrets'] = [{
                 'name': pull_secret
             } for pull_secret in pod.image_pull_secrets.split(',')]
+
+    @staticmethod
+    def extract_tolerations(pod, req):
+        if pod.tolerations:
+            req['spec']['tolerations'] = pod.tolerations

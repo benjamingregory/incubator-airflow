@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,6 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import logging
 import socket
 import six
 
@@ -26,25 +27,30 @@ from flask_caching import Cache
 from flask_wtf.csrf import CSRFProtect
 from six.moves.urllib.parse import urlparse
 from werkzeug.wsgi import DispatcherMiddleware
+from werkzeug.contrib.fixers import ProxyFix
 
 from airflow import settings
 from airflow import configuration as conf
 from airflow.logging_config import configure_logging
-
+from airflow.www_rbac.static_config import configure_manifest_files
 
 app = None
 appbuilder = None
 csrf = CSRFProtect()
 
+log = logging.getLogger(__name__)
 
-def create_app(config=None, testing=False, app_name="Airflow"):
+def create_app(config=None, session=None, testing=False, app_name="Airflow"):
     global app, appbuilder
     app = Flask(__name__)
+    if conf.getboolean('webserver', 'ENABLE_PROXY_FIX'):
+        app.wsgi_app = ProxyFix(app.wsgi_app)
     app.secret_key = conf.get('webserver', 'SECRET_KEY')
 
     airflow_home_path = conf.get('core', 'AIRFLOW_HOME')
     webserver_config_path = airflow_home_path + '/webserver_config.py'
     app.config.from_pyfile(webserver_config_path, silent=True)
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['APP_NAME'] = app_name
     app.config['TESTING'] = testing
 
@@ -56,18 +62,30 @@ def create_app(config=None, testing=False, app_name="Airflow"):
     api.load_auth()
     api.api_auth.init_app(app)
 
-    cache = Cache(app=app, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': '/tmp'})  # noqa
+    # flake8: noqa: F841
+    cache = Cache(app=app, config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': '/tmp'})
 
     from airflow.www_rbac.blueprints import routes
     app.register_blueprint(routes)
 
     configure_logging()
+    configure_manifest_files(app)
 
     with app.app_context():
+
+        from airflow.www_rbac.security import AirflowSecurityManager
+        security_manager_class = app.config.get('SECURITY_MANAGER_CLASS') or \
+            AirflowSecurityManager
+
+        if not issubclass(security_manager_class, AirflowSecurityManager):
+            raise Exception(
+                """Your CUSTOM_SECURITY_MANAGER must now extend AirflowSecurityManager,
+                 not FAB's security manager.""")
+
         appbuilder = AppBuilder(
             app,
-            db.session,
-            security_manager_class=app.config.get('SECURITY_MANAGER_CLASS'),
+            db.session if not session else session,
+            security_manager_class=security_manager_class,
             base_template='appbuilder/baselayout.html')
 
         def init_views(appbuilder):
@@ -120,16 +138,33 @@ def create_app(config=None, testing=False, app_name="Airflow"):
                                 category='About',
                                 category_icon='fa-th')
 
+            def integrate_plugins():
+                """Integrate plugins to the context"""
+                from airflow.plugins_manager import (
+                    flask_appbuilder_views, flask_appbuilder_menu_links)
+
+                for v in flask_appbuilder_views:
+                    log.debug("Adding view %s", v["name"])
+                    appbuilder.add_view(v["view"],
+                                        v["name"],
+                                        category=v["category"])
+                for ml in sorted(flask_appbuilder_menu_links, key=lambda x: x["name"]):
+                    log.debug("Adding menu link %s", ml["name"])
+                    appbuilder.add_link(ml["name"],
+                                        href=ml["href"],
+                                        category=ml["category"],
+                                        category_icon=ml["category_icon"])
+
+            integrate_plugins()
             # Garbage collect old permissions/views after they have been modified.
             # Otherwise, when the name of a view or menu is changed, the framework
             # will add the new Views and Menus names to the backend, but will not
             # delete the old ones.
-            appbuilder.security_cleanup()
 
         init_views(appbuilder)
 
-        from airflow.www_rbac.security import init_roles
-        init_roles(appbuilder)
+        security_manager = appbuilder.sm
+        security_manager.sync_roles()
 
         from airflow.www_rbac.api.experimental import endpoints as e
         # required for testing purposes otherwise the module retains
@@ -162,14 +197,14 @@ def root_app(env, resp):
     return [b'Apache Airflow is not at this location']
 
 
-def cached_app(config=None, testing=False):
+def cached_app(config=None, session=None, testing=False):
     global app, appbuilder
     if not app or not appbuilder:
         base_url = urlparse(conf.get('webserver', 'base_url'))[2]
         if not base_url or base_url == '/':
             base_url = ""
 
-        app, _ = create_app(config, testing)
+        app, _ = create_app(config, session, testing)
         app = DispatcherMiddleware(root_app, {base_url: app})
     return app
 

@@ -20,7 +20,11 @@ source my_env/bin/activate
 # To make sure not to install the GPL dependency:
 #   export SLUGIFY_USES_TEXT_UNIDECODE=yes
 # In case you do not mind:
+<<<<<<< HEAD
 #   export GPL_UNIDECODE=yes
+=======
+#   export AIRFLOW_GPL_UNIDECODE=yes
+>>>>>>> master
 
 # [required] building and installing
 # by pip (preferred)
