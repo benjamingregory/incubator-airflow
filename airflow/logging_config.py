@@ -39,6 +39,10 @@ def configure_logging():
     except AirflowConfigException:
         log.debug('Could not find key logging_config_class in config')
 
+    print("======================================")
+    print(logging_class_path)
+    print("======================================")
+
     if logging_class_path:
         try:
             logging_config = import_string(logging_class_path)
@@ -79,6 +83,10 @@ def configure_logging():
 def validate_logging_config(logging_config):
     # Now lets validate the other logging-related settings
     task_log_reader = conf.get('core', 'task_log_reader')
+    print("======================================")
+    print(task_log_reader)
+    print("======================================")
+
 
     logger = logging.getLogger('airflow.task')
 

@@ -127,32 +127,8 @@ class AirflowConfigParser(ConfigParser):
         ('celery', 'result_backend'),
         # Todo: remove this in Airflow 1.11
         ('celery', 'celery_result_backend'),
-<<<<<<< HEAD
     }
 
-    # A two-level mapping of (section -> new_name -> old_name). When reading
-    # new_name, the old_name will be checked to see if it exists. If it does a
-    # DeprecationWarning will be issued and the old name will be used instead
-    deprecated_options = {
-        'celery': {
-            # Remove these keys in Airflow 1.11
-            'worker_concurrency': 'celeryd_concurrency',
-            'broker_url': 'celery_broker_url',
-            'ssl_active': 'celery_ssl_active',
-            'ssl_cert': 'celery_ssl_cert',
-            'ssl_key': 'celery_ssl_key',
-        }
-=======
-        ('atlas', 'password'),
-        ('smtp', 'smtp_password'),
-        ('ldap', 'bind_password'),
-        ('kubernetes', 'git_password'),
->>>>>>> master
-    }
-    deprecation_format_string = (
-        'The {old} option in [{section}] has been renamed to {new} - the old '
-        'setting has been used, but please update your config.'
-    )
 
     # A two-level mapping of (section -> new_name -> old_name). When reading
     # new_name, the old_name will be checked to see if it exists. If it does a

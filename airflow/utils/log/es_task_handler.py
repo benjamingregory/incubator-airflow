@@ -19,14 +19,54 @@
 
 # Using `from elasticsearch import *` would break elasticsearch mocking used in unit test.
 import elasticsearch
+import io
+import json
+import logging
+import os
+import requests
+import sys
+
+from elasticsearch_dsl import Search
+from jinja2 import Template
+
 import pendulum
 from elasticsearch_dsl import Search
+
+from airflow import configuration as conf
+from airflow.configuration import AirflowConfigException
+from airflow.utils.file import mkdirs
 
 from airflow.utils import timezone
 from airflow.utils.helpers import parse_template_string
 from airflow.utils.log.file_task_handler import FileTaskHandler
 from airflow.utils.log.logging_mixin import LoggingMixin
 
+RECORD_LABELS = ['asctime', 'levelname', 'filename', 'lineno', 'message']
+
+class parentStdout():
+    """
+    Keep track of the parent stdout context when running task in child process
+    """
+    def __init__(self):
+        self.closed = False
+    def write(self, string):
+        sys.__stdout__.write(string)
+
+class JsonFormatter(logging.Formatter):
+    """
+    JsonFormatter is a custom formatter that inherits from logging.Formatter.
+    It will overwrite the `format` method with its own format logic.
+    Given an object of task instance information, it will grab relevant
+    log state information from the LogRecord object and merge the two objects before
+    returning the combined json.
+    """
+    def __init__(self, processedTask=None):
+        super(JsonFormatter, self).__init__()
+        self.processedTask = processedTask
+    def format(self, record):
+        recordObject = {label: getattr(record, label) for label in RECORD_LABELS}
+        recordObject = {**recordObject, **self.processedTask}
+        return json.dumps(recordObject)
 
 class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
     PAGE = 0
@@ -50,7 +90,7 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
 
     def __init__(self, base_log_folder, filename_template,
                  log_id_template, end_of_log_mark,
-                 host='localhost:9200'):
+                 host, write_stdout):
         """
         :param base_log_folder: base folder to store logs locally
         :param log_id_template: log id template
@@ -58,15 +98,110 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         """
         super(ElasticsearchTaskHandler, self).__init__(
             base_log_folder, filename_template)
-        self.closed = False
+
+        self.write_stdout = write_stdout
+
+        self.handler = None
+        self.taskInstance = None
+        self.writer = None
+
+
+        self.client = elasticsearch.Elasticsearch([host])
 
         self.log_id_template, self.log_id_jinja_template = \
             parse_template_string(log_id_template)
 
-        self.client = elasticsearch.Elasticsearch([host])
-
         self.mark_end_on_close = True
         self.end_of_log_mark = end_of_log_mark
+
+        self.closed = False
+
+    def set_context(self, ti):
+        """
+        Provide task_instance context. Set the sys.stdout to the writer object to save stdout context.
+        Parse task instance information into the task instance attribute.
+        :param ti: task instance object
+        """
+        if self.write_stdout == True:
+            self.writer = parentStdout()
+            sys.stdout = self.writer
+            self.taskInstance = self._process_taskInstance(ti)
+            self.handler = logging.StreamHandler(stream=sys.stdout)
+            self.handler.setFormatter(JsonFormatter(self.taskInstance))
+            self.handler.setLevel(self.level)
+
+        elif self.write_stdout == False:
+            super(ElasticsearchTaskHandler, self).set_context(ti)
+        self.mark_end_on_close = not ti.raw
+
+    def emit(self, record):
+        """
+        Formatter sets 'asctime' and the log 'message'
+        These fields will be undefined without calling 'format' on the LogRecord
+        """
+
+        # If using stdout, handle formatting
+        if self.write_stdout == True:
+            self.formatter.format(record)
+            if self.handler is not None:
+                self.handler.emit(record)
+
+        # If to a file, use FileTaskHandler emit instead
+        elif self.write_stdout == False:
+            super(ElasticsearchTaskHandler).emit(record)
+
+    def flush(self):
+        if self.handler is not None:
+            self.handler.flush()
+
+
+    def _process_taskInstance(self, ti):
+        """
+        Transform task instance class into an object with unique task identifiers
+        """
+        ti_info =  {'dag_id': str(ti.dag_id),
+                    'task_id': str(ti.task_id),
+                    'execution_date': str(ti.execution_date),
+                    'try_number': str(ti.try_number)}
+        return ti_info
+
+    def read(self, task_instance, try_number=None, metadata=None):
+        """
+        Read logs of a given task instance from elasticsearch.
+        :param task_instance: task instance object
+        :param try_number: task instance try_number to read logs from. If None,
+                           it will start at 1.
+        """
+        if try_number is None:
+            next_try = task_instance.next_try_number
+            try_numbers = list(range(1, next_try))
+        elif try_number < 1:
+            logs = [
+                'Error fetching the logs. Try number {} is invalid.'.format(try_number),
+            ]
+            return logs
+        else:
+            try_numbers = [try_number]
+
+        logs = [''] * len(try_numbers)
+        metadatas = [{}] * len(try_numbers)
+        for i, try_number in enumerate(try_numbers):
+            log, metadata = self._read(task_instance, try_number, metadata)
+
+            # If there's a log, then we don't want to keep checking. Set end_of_log
+            # to True, set the mark_end_on_close to False and return the log and metadata
+            # This will prevent the recursion from happening in the ti_log.html script
+            # and will therefore prevent constantly checking ES for updates, since we've
+            # fetched what we're looking for
+            if log:
+                logs[i] += log
+                metadata['end_of_log'] = True
+                self.mark_end_on_close = False
+                metadatas[i] = metadata
+
+        return logs, metadatas
+
+
 
     def _render_log_id(self, ti, try_number):
         if self.log_id_jinja_template:
@@ -170,16 +305,16 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
 
         return logs
 
-    def set_context(self, ti):
-        super(ElasticsearchTaskHandler, self).set_context(ti)
-        self.mark_end_on_close = not ti.raw
+    # def set_context(self, ti):
+    #     super(ElasticsearchTaskHandler, self).set_context(ti)
+    #     self.mark_end_on_close = not ti.raw
 
     def close(self):
         # When application exit, system shuts down all handlers by
         # calling close method. Here we check if logger is already
         # closed to prevent uploading the log to remote storage multiple
         # times when `logging.shutdown` is called.
-        if self.closed:
+        if self.closed == True:
             return
 
         if not self.mark_end_on_close:
@@ -198,8 +333,11 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
 
         # Mark the end of file using end of log mark,
         # so we know where to stop while auto-tailing.
-        self.handler.stream.write(self.end_of_log_mark)
+        # self.handler.stream.write(self.end_of_log_mark)
 
-        super(ElasticsearchTaskHandler, self).close()
+        if self.handler is not None:
+            self.writer.closed = True
+            self.handler.close()
+            sys.stdout = sys.__stdout__
 
         self.closed = True

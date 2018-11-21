@@ -13,14 +13,11 @@ is subject to the terms and conditions of their respective licenses.
 See the LICENSE file for a list of subcomponents and dependencies and
 their respective licenses.
 
-<<<<<<< HEAD
-=======
 airflow.contrib.auth.backends.github_enterprise_auth:
 -----------------------------------------------------
 
 * Copyright 2015 Matthew Pelland (matt@pelland.io)
 
->>>>>>> master
 hue:
 -----
 This product contains a modified portion of 'Hue' developed by Cloudera, Inc.

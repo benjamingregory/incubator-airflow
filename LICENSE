@@ -217,16 +217,10 @@ The following components are provided under the Apache 2.0 License.
 See project link for details. The text of each license is also included
 at licenses/LICENSE-[project].txt.
 
-<<<<<<< HEAD
-    (ALv2 License) hue (https://github.com/cloudera/hue/)
-    (ALv2 License) jqclock (https://github.com/JohnRDOrazio/jQuery-Clock-Plugin)
-    (ALv2 License) bootstrap3-typeahead (https://github.com/bassjobsen/Bootstrap-3-Typeahead)
-=======
     (ALv2 License) hue v4.3.0 (https://github.com/cloudera/hue/)
     (ALv2 License) jqclock v2.3.0 (https://github.com/JohnRDOrazio/jQuery-Clock-Plugin)
     (ALv2 License) bootstrap3-typeahead v4.0.2 (https://github.com/bassjobsen/Bootstrap-3-Typeahead)
     (ALv2 License) airflow.contrib.auth.backends.github_enterprise_auth
->>>>>>> master
 
 ========================================================================
 MIT licenses
@@ -262,15 +256,7 @@ BSD 3-Clause licenses
 The following components are provided under the BSD 3-Clause license. See project links for details.
 The text of each license is also included at licenses/LICENSE-[project].txt.
 
-<<<<<<< HEAD
-    (BSD 3 License) Ace (https://github.com/ajaxorg/ace)
-    (BSD 3 License) d3js (https://d3js.org)
-    (BSD 3 License) parallel-coordinates (http://syntagmatic.github.com/parallel-coordinates/)
-    (BSD 3 License) scikit-learn (https://github.com/scikit-learn/scikit-learn)
-=======
     (BSD 3 License) Ace v1.1.8 (https://github.com/ajaxorg/ace)
     (BSD 3 License) d3js v3.5.17 (https://d3js.org)
     (BSD 3 License) parallel-coordinates v0.7.0 (http://syntagmatic.github.com/parallel-coordinates/)
     (BSD 3 License) scikit-learn v0.19.1 (https://github.com/scikit-learn/scikit-learn)
->>>>>>> master
-

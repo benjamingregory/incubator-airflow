@@ -202,17 +202,11 @@ class BaseJob(Base, LoggingMixin):
                 self._execute()
                 # In case of max runs or max duration
                 self.state = State.SUCCESS
-<<<<<<< HEAD
-            except SystemExit as e:
-                # In case of ^C or SIGTERM
-                self.state = State.SUCCESS
-            except Exception as e:
-=======
+
             except SystemExit:
                 # In case of ^C or SIGTERM
                 self.state = State.SUCCESS
             except Exception:
->>>>>>> master
                 self.state = State.FAILED
                 raise
             finally:

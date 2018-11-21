@@ -85,17 +85,11 @@ extras to build the full API reference.
 
 There are three ways to setup an Apache Airflow development environment.
 
-<<<<<<< HEAD
-```
-# Start docker in your Airflow directory
-docker run -t -i -v `pwd`:/airflow/ -w /airflow/ -e SLUGIFY_USES_TEXT_UNIDECODE=yes python:2 bash
-=======
 1. Using tools and libraries installed directly on your system.
 
   Install Python (2.7.x or 3.4.x), MySQL, and libxml by using system-level package
   managers like yum, apt-get for Linux, or Homebrew for Mac OS at first. Refer to the [base CI Dockerfile](https://github.com/apache/incubator-airflow-ci/blob/master/Dockerfile) for
   a comprehensive list of required packages.
->>>>>>> master
 
   Then install python development requirements. It is usually best to work in a virtualenv:
 

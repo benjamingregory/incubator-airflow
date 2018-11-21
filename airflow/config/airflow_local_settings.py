@@ -54,6 +54,8 @@ LOG_ID_TEMPLATE = conf.get('elasticsearch', 'ELASTICSEARCH_LOG_ID_TEMPLATE')
 
 END_OF_LOG_MARK = conf.get('elasticsearch', 'ELASTICSEARCH_END_OF_LOG_MARK')
 
+WRITE_STDOUT = conf.get('elasticsearch', 'ELASTICSEARCH_WRITE_STDOUT')
+
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -80,14 +82,25 @@ LOGGING_CONFIG = {
             'base_log_folder': os.path.expanduser(PROCESSOR_LOG_FOLDER),
             'filename_template': PROCESSOR_FILENAME_TEMPLATE,
         },
-        'stdout': {
-            'class': 'airflow.utils.log.stdout_task_handler.StdoutTaskHandler',
+        'elasticsearch': {
+            'class': 'airflow.utils.log.es_task_handler.ElasticsearchTaskHandler',
             'formatter': 'airflow',
+            'base_log_folder': os.path.expanduser(BASE_LOG_FOLDER),
             'log_id_template': LOG_ID_TEMPLATE,
             'filename_template': FILENAME_TEMPLATE,
             'end_of_log_mark': END_OF_LOG_MARK,
-            'host': ELASTICSEARCH_HOST
-        }
+            'host': ELASTICSEARCH_HOST,
+            'write_stdout': WRITE_STDOUT,
+        },
+        # 'stdout': {
+        #     'class': 'airflow.utils.log.stdout_task_handler.StdoutTaskHandler',
+        #     'formatter': 'airflow',
+        #     'log_id_template': LOG_ID_TEMPLATE,
+        #     'filename_template': FILENAME_TEMPLATE,
+        #     'end_of_log_mark': END_OF_LOG_MARK,
+        #     'host': ELASTICSEARCH_HOST,
+        #     'write_stdout': True
+        # }
     },
     'loggers': {
         'airflow.processor': {
@@ -96,7 +109,7 @@ LOGGING_CONFIG = {
             'propagate': False,
         },
         'airflow.task': {
-            'handlers': ['stdout'],
+            'handlers': ['elasticsearch'],
             'level': LOG_LEVEL,
             'propagate': False,
         },
@@ -174,18 +187,9 @@ REMOTE_HANDLERS = {
             'filename_template': FILENAME_TEMPLATE,
             'end_of_log_mark': END_OF_LOG_MARK,
             'host': ELASTICSEARCH_HOST,
+            'write_stdout': WRITE_STDOUT,
         },
     },
-    # 'elasticsearch_stdout_task': {
-    #     'task': {
-    #         'class': 'airflow.utils.log.stdout_task_handler.StdoutTaskHandler',
-    #         'formatter': 'airflow',
-    #         'log_id_template': LOG_ID_TEMPLATE,
-    #         'filename_template': FILENAME_TEMPLATE,
-    #         'end_of_log_mark': END_OF_LOG_MARK,
-    #         'host': ELASTICSEARCH_HOST
-    #     },
-    # },
 }
 
 REMOTE_LOGGING = conf.get('core', 'remote_logging')
@@ -198,3 +202,4 @@ elif REMOTE_LOGGING == True and REMOTE_BASE_LOG_FOLDER.startswith('wasb'):
         LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['wasb'])
 elif REMOTE_LOGGING == True and ELASTICSEARCH_HOST:
         LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['elasticsearch'])
+LOGGING_CONFIG['handlers'].update(REMOTE_HANDLERS['elasticsearch'])

@@ -5,7 +5,6 @@ assists users migrating to a new version.
 
 ## Airflow Master
 
-<<<<<<< HEAD
 ## Airflow 1.10
 
 Installation and upgrading requires setting `SLUGIFY_USES_TEXT_UNIDECODE=yes` in your environment or
@@ -15,7 +14,6 @@ dependency (python-nvd3 -> python-slugify -> unidecode).
 ### Replace DataProcHook.await calls to DataProcHook.wait
 
 The method name was changed to be compatible with the Python 3.7 async/await keywords
-=======
 ### New `dag_processor_manager_log_location` config option
 
 The DAG parsing manager log now by default will be log into a file, where its location is
@@ -32,7 +30,6 @@ BashTaskRunner has been renamed to StandardTaskRunner. It is the default task ru
 so you might need to update your config.
 
 `task_runner = StandardTaskRunner`
->>>>>>> master
 
 ### DAG level Access Control for new RBAC UI
 
@@ -42,8 +39,6 @@ that he has permissions on. If a new role wants to access all the dags, the admi
 
 We also provide a new cli command(``sync_perm``) to allow admin to auto sync permissions.
 
-<<<<<<< HEAD
-=======
 
 ### min_file_parsing_loop_time config option temporarily disabled
 
