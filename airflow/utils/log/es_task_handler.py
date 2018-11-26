@@ -37,9 +37,9 @@ from airflow.utils.log.logging_mixin import LoggingMixin
 
 RECORD_LABELS = ['asctime', 'levelname', 'filename', 'lineno', 'message']
 
-class parentStdout():
+class ParentStdout():
     """
-    Keep track of the parent stdout context when running task in child process
+    Keep track of the ParentStdout stdout context when running task in child process
     """
     def __init__(self):
         self.closed = False
@@ -50,12 +50,13 @@ class JsonFormatter(logging.Formatter):
     def __init__(self, processedTask=None):
         super(JsonFormatter, self).__init__()
         self.processedTask = processedTask
+
     def format(self, record):
         recordObject = {label: getattr(record, label) for label in RECORD_LABELS}
         recordObject = {**recordObject, **self.processedTask}
         return json.dumps(recordObject)
 
-class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
+class ElasticsearchTaskHandler(FileTaskHandler):
     PAGE = 0
     MAX_LINE_PER_PAGE = 1000
 
@@ -77,7 +78,7 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
 
     def __init__(self, base_log_folder, filename_template,
                  log_id_template, end_of_log_mark,
-                 host='localhost:9200', write_stdout):
+                 write_stdout, host='localhost:9200'):
         """
         :param base_log_folder: base folder to store logs locally
         :param log_id_template: log id template
@@ -85,6 +86,7 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         """
         super(ElasticsearchTaskHandler, self).__init__(
             base_log_folder, filename_template)
+
         self.closed = False
         self.write_stdout = write_stdout
 
@@ -101,19 +103,21 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         self.end_of_log_mark = end_of_log_mark
 
     def set_context(self, ti):
-        if self.write_stdout == True:
-            self.writer = parentStdout()
+        if self.write_stdout:
+            self.writer = ParentStdout()
             sys.stdout = self.writer
+
             self.taskInstance = self._process_taskInstance(ti)
+
             self.handler = logging.StreamHandler(stream=sys.stdout)
             self.handler.setFormatter(JsonFormatter(self.taskInstance))
             self.handler.setLevel(self.level)
-        elif self.write_stdout == False:
+        elif not self.write_stdout:
             super(ElasticsearchTaskHandler, self).set_context(ti)
         self.mark_end_on_close = not ti.raw
 
     def emit(self, record):
-        if self.write_stdout == True:
+        if self.write_stdout:
             self.formatter.format(record)
             if self.handler is not None:
                 self.handler.emit(record)
@@ -138,7 +142,7 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
             :param try_number: task instance try_number to read logs from. If None,
                                it will start at 1.
             """
-            if self.write_stdout == True:
+            if self.write_stdout:
                 if try_number is None:
                     next_try = task_instance.next_try_number
                     try_numbers = list(range(1, next_try))
@@ -171,16 +175,25 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
                 super(ElasticsearchTaskHandler, self).read(task_instance, try_number, metadata)
 
     def _render_log_id(self, ti, try_number):
+        # Using Jinja2 templating
         if self.log_id_jinja_template:
             jinja_context = ti.get_template_context()
             jinja_context['try_number'] = try_number
             return self.log_id_jinja_template.render(**jinja_context)
 
+        # Make log_id ES Query friendly if using standard out option
+        if self.write_stdout:
+            return self.log_id_template.format(dag_id=ti.dag_id,
+                                                   task_id=ti.task_id,
+                                                   execution_date=ti
+                                                   .execution_date.isoformat(),
+                                                   try_number=try_number).replace(":", "_").replace("-", "_").replace("+", "_")
+
         return self.log_id_template.format(dag_id=ti.dag_id,
-                                           task_id=ti.task_id,
-                                           execution_date=ti
-                                           .execution_date.isoformat(),
-                                           try_number=try_number)
+                                               task_id=ti.task_id,
+                                               execution_date=ti
+                                               .execution_date.isoformat(),
+                                               try_number=try_number)
 
     def _read(self, ti, try_number, metadata=None):
         """
@@ -234,15 +247,6 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         :param offset: the offset start to read log from.
         :type offset: str
         """
-
-        log_components = log_id.split("-")
-        dag_id = log_components[0]
-        task_id = log_components[1]
-        execution_date = '_'.join(log_components[2:5]).replace(":", "_").replace("-", "_").replace("+", "_")
-        try_number = str(int(log_components[5]))
-
-        new_log_id = f"{dag_id}_{task_id}_{execution_date}_{try_number}"
-
         # Offset is the unique key for sorting logs given log_id.
         s = Search(using=self.client) \
             .query('match', log_id=log_id) \
@@ -289,13 +293,13 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         # so we know where to stop while auto-tailing.
         # self.handler.stream.write(self.end_of_log_mark)
 
-        if self.write_stdout == True:
+        if self.write_stdout:
             if self.handler is not None:
                 self.writer.closed = True
                 self.handler.close()
                 sys.stdout = sys.__stdout__
 
-        if not self.write_stdout:
+        elif not self.write_stdout:
             super(ElasticsearchTaskHandler, self).close()
 
         self.closed = True
