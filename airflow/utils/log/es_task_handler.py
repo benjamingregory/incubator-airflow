@@ -117,9 +117,9 @@ class ElasticsearchTaskHandler(FileTaskHandler):
 
             self.handler = logging.StreamHandler(stream=sys.stdout)
 
-            if self.write_stdout:
+            if self.json_format:
                 self.handler.setFormatter(JsonFormatter(self.taskInstance))
-            elif not self.write_stdout:
+            elif not self.json_format:
                 self.handler.setFormatter(self.formatter)
             self.handler.setLevel(self.level)
 
