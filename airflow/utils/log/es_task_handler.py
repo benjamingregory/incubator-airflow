@@ -47,6 +47,11 @@ class ParentStdout():
         sys.__stdout__.write(string)
 
 class JsonFormatter(logging.Formatter):
+    """
+    Custom formatter to allow for fields to be captured in JSON format.
+    Fields are added via the RECORD_LABELS list.
+    TODO: Move RECORD_LABELS into configs/log_config.py
+    """
     def __init__(self, processedTask=None):
         super(JsonFormatter, self).__init__()
         self.processedTask = processedTask
@@ -78,7 +83,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
 
     def __init__(self, base_log_folder, filename_template,
                  log_id_template, end_of_log_mark,
-                 write_stdout, host='localhost:9200'):
+                 write_stdout, json_format, host='localhost:9200'):
         """
         :param base_log_folder: base folder to store logs locally
         :param log_id_template: log id template
@@ -89,6 +94,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
 
         self.closed = False
         self.write_stdout = write_stdout
+        self.json_format = json_format
 
         self.handler = None
         self.taskInstance = None
@@ -110,8 +116,13 @@ class ElasticsearchTaskHandler(FileTaskHandler):
             self.taskInstance = self._process_taskInstance(ti)
 
             self.handler = logging.StreamHandler(stream=sys.stdout)
-            self.handler.setFormatter(JsonFormatter(self.taskInstance))
+
+            if self.write_stdout:
+                self.handler.setFormatter(JsonFormatter(self.taskInstance))
+            elif not self.write_stdout:
+                self.handler.setFormatter(self.formatter)
             self.handler.setLevel(self.level)
+
         elif not self.write_stdout:
             super(ElasticsearchTaskHandler, self).set_context(ti)
         self.mark_end_on_close = not ti.raw
@@ -159,7 +170,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
                 for i, try_number in enumerate(try_numbers):
                     log, metadata = self._read(task_instance, try_number, metadata)
 
-                    # If there's a log, then we don't want to keep checking. Set end_of_log
+                    # If there's a log present, then we don't want to keep checking. Set end_of_log
                     # to True, set the mark_end_on_close to False and return the log and metadata
                     # This will prevent the recursion from happening in the ti_log.html script
                     # and will therefore prevent constantly checking ES for updates, since we've
@@ -188,7 +199,6 @@ class ElasticsearchTaskHandler(FileTaskHandler):
                                                    execution_date=ti
                                                    .execution_date.isoformat(),
                                                    try_number=try_number).replace(":", "_").replace("-", "_").replace("+", "_")
-
         return self.log_id_template.format(dag_id=ti.dag_id,
                                                task_id=ti.task_id,
                                                execution_date=ti
