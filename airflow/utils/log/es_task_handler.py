@@ -113,7 +113,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
             self.writer = ParentStdout()
             sys.stdout = self.writer
 
-            self.taskInstance = self._process_taskInstance(ti)
+            self.taskInstance = self._process_task_instance(ti)
 
             self.handler = logging.StreamHandler(stream=sys.stdout)
 
@@ -139,7 +139,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
         if self.handler is not None:
             self.handler.flush()
 
-    def _process_taskInstance(self, ti):
+    def _process_task_instance(self, ti):
         ti_info =  {'dag_id': str(ti.dag_id),
                     'task_id': str(ti.task_id),
                     'execution_date': str(ti.execution_date),
