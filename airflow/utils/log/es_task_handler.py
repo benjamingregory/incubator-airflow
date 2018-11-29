@@ -17,34 +17,30 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Using `from elasticsearch import *` would break elasticsearch mocking used in unit test.
+# Using `from elasticsearch import *` breaks es mocking in unit test.
 import elasticsearch
-import io
 import json
 import logging
-import os
-import requests
 import sys
 
 import pendulum
 from elasticsearch_dsl import Search
-from jinja2 import Template
 
 from airflow.utils import timezone
 from airflow.utils.helpers import parse_template_string
 from airflow.utils.log.file_task_handler import FileTaskHandler
-from airflow.utils.log.logging_mixin import LoggingMixin
 
-RECORD_LABELS = ['asctime', 'levelname', 'filename', 'lineno', 'message']
 
 class ParentStdout():
     """
-    Keep track of the ParentStdout stdout context when running task in child process
+    Keep track of the ParentStdout stdout context in child process
     """
     def __init__(self):
         self.closed = False
+
     def write(self, string):
         sys.__stdout__.write(string)
+
 
 class JsonFormatter(logging.Formatter):
     """
@@ -52,14 +48,17 @@ class JsonFormatter(logging.Formatter):
     Fields are added via the RECORD_LABELS list.
     TODO: Move RECORD_LABELS into configs/log_config.py
     """
-    def __init__(self, processedTask=None):
+    def __init__(self, record_labels, processedTask=None):
         super(JsonFormatter, self).__init__()
         self.processedTask = processedTask
+        self.record_labels = record_labels
 
     def format(self, record):
-        recordObject = {label: getattr(record, label) for label in RECORD_LABELS}
-        recordObject = {**recordObject, **self.processedTask}
-        return json.dumps(recordObject)
+        recordObj = {label: getattr(record, label)
+                     for label in self.record_labels}
+        recordObj = {**recordObj, **self.processedTask}
+        return json.dumps(recordObj)
+
 
 class ElasticsearchTaskHandler(FileTaskHandler):
     PAGE = 0
@@ -83,7 +82,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
 
     def __init__(self, base_log_folder, filename_template,
                  log_id_template, end_of_log_mark,
-                 write_stdout, json_format, host='localhost:9200'):
+                 write_stdout, json_format, record_labels, host=None):
         """
         :param base_log_folder: base folder to store logs locally
         :param log_id_template: log id template
@@ -95,6 +94,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
         self.closed = False
         self.write_stdout = write_stdout
         self.json_format = json_format
+        self.record_labels = record_labels
 
         self.handler = None
         self.taskInstance = None
@@ -118,7 +118,8 @@ class ElasticsearchTaskHandler(FileTaskHandler):
             self.handler = logging.StreamHandler(stream=sys.stdout)
 
             if self.json_format:
-                self.handler.setFormatter(JsonFormatter(self.taskInstance))
+                self.handler.setFormatter(JsonFormatter(self.record_labels,
+                                                        self.taskInstance))
             elif not self.json_format:
                 self.handler.setFormatter(self.formatter)
             self.handler.setLevel(self.level)
@@ -140,18 +141,18 @@ class ElasticsearchTaskHandler(FileTaskHandler):
             self.handler.flush()
 
     def _process_task_instance(self, ti):
-        ti_info =  {'dag_id': str(ti.dag_id),
-                    'task_id': str(ti.task_id),
-                    'execution_date': str(ti.execution_date),
-                    'try_number': str(ti.try_number)}
+        ti_info = {'dag_id': str(ti.dag_id),
+                   'task_id': str(ti.task_id),
+                   'execution_date': str(ti.execution_date),
+                   'try_number': str(ti.try_number)}
         return ti_info
 
     def read(self, task_instance, try_number=None, metadata=None):
             """
             Read logs of a given task instance from elasticsearch.
             :param task_instance: task instance object
-            :param try_number: task instance try_number to read logs from. If None,
-                               it will start at 1.
+            :param try_number: task instance try_number to read logs from.
+            If None,it will start at 1.
             """
             if self.write_stdout:
                 if try_number is None:
@@ -159,7 +160,8 @@ class ElasticsearchTaskHandler(FileTaskHandler):
                     try_numbers = list(range(1, next_try))
                 elif try_number < 1:
                     logs = [
-                        'Error fetching the logs. Try number {} is invalid.'.format(try_number),
+                        'Error fetching the logs. \
+                         Try number {} is invalid.'.format(try_number),
                     ]
                     return logs
                 else:
@@ -168,12 +170,16 @@ class ElasticsearchTaskHandler(FileTaskHandler):
                 logs = [''] * len(try_numbers)
                 metadatas = [{}] * len(try_numbers)
                 for i, try_number in enumerate(try_numbers):
-                    log, metadata = self._read(task_instance, try_number, metadata)
+                    log, metadata = self._read(task_instance,
+                                               try_number,
+                                               metadata)
 
-                    # If there's a log present, then we don't want to keep checking. Set end_of_log
-                    # to True, set the mark_end_on_close to False and return the log and metadata
-                    # This will prevent the recursion from happening in the ti_log.html script
-                    # and will therefore prevent constantly checking ES for updates, since we've
+                    # If there's a log present, then we don't want to keep
+                    # checking. Set end_of_log to True, set the
+                    # mark_end_on_close to False and return the log and
+                    # metadata. This will prevent the recursion from happening
+                    # in the ti_log.html script and will therefore prevent
+                    # constantly checking ES for updates, since we've
                     # fetched what we're looking for
                     if log:
                         logs[i] += log
@@ -183,7 +189,9 @@ class ElasticsearchTaskHandler(FileTaskHandler):
 
                 return logs, metadatas
             elif not self.write_stdout:
-                super(ElasticsearchTaskHandler, self).read(task_instance, try_number, metadata)
+                super(ElasticsearchTaskHandler, self).read(task_instance,
+                                                           try_number,
+                                                           metadata)
 
     def _render_log_id(self, ti, try_number):
         # Using Jinja2 templating
@@ -195,15 +203,18 @@ class ElasticsearchTaskHandler(FileTaskHandler):
         # Make log_id ES Query friendly if using standard out option
         if self.write_stdout:
             return self.log_id_template.format(dag_id=ti.dag_id,
-                                                   task_id=ti.task_id,
-                                                   execution_date=ti
-                                                   .execution_date.isoformat(),
-                                                   try_number=try_number).replace(":", "_").replace("-", "_").replace("+", "_")
-        return self.log_id_template.format(dag_id=ti.dag_id,
                                                task_id=ti.task_id,
                                                execution_date=ti
                                                .execution_date.isoformat(),
-                                               try_number=try_number)
+                                               try_number=try_number) \
+                                               .replace(":", "_") \
+                                               .replace("-", "_") \
+                                               .replace("+", "_")
+        return self.log_id_template.format(dag_id=ti.dag_id,
+                                           task_id=ti.task_id,
+                                           execution_date=ti
+                                           .execution_date.isoformat(),
+                                           try_number=try_number)
 
     def _read(self, ti, try_number, metadata=None):
         """
@@ -267,8 +278,8 @@ class ElasticsearchTaskHandler(FileTaskHandler):
         logs = []
         if s.count() != 0:
             try:
-
-                logs = s[self.MAX_LINE_PER_PAGE * self.PAGE:self.MAX_LINE_PER_PAGE] \
+                logs = s[self.MAX_LINE_PER_PAGE *
+                         self.PAGE:self.MAX_LINE_PER_PAGE] \
                     .execute()
             except Exception as e:
                 msg = 'Could not read log with log_id: {}, ' \
@@ -295,7 +306,7 @@ class ElasticsearchTaskHandler(FileTaskHandler):
             return
 
         # Reopen the file stream, because FileHandler.close() would be called
-        # first in logging.shutdown() and the stream in it would be set to None.
+        # first in logging.shutdown() and the stream in it would be set to None
         if self.handler.stream is None or self.handler.stream.closed:
             self.handler.stream = self.handler._open()
 
