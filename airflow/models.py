@@ -186,7 +186,7 @@ class DagBag(BaseDagBag, LoggingMixin):
         if executor is None:
             executor = GetDefaultExecutor()
         dag_folder = settings.DAGS_FOLDER
-        print('THE DAGS_FOLDER IS: {}'.format(dag_folder))
+        self.log.info('THE DAGS_FOLDER IS: {}'.format(dag_folder))
         self.log.info("Filling up the DagBag from %s", dag_folder)
         self.dag_folder = dag_folder
         self.dags = {}
