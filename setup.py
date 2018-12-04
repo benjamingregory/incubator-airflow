@@ -85,7 +85,7 @@ def git_version(version):
                 match='[0-9]*', exact_match=True,
                 tags=True, dirty=True)
             assert tag == version, (tag, version)
-            return '.release:{version}+{sha}'.format(version='1.9.0-rcBen',
+            return '.release:{version}+{sha}'.format(version=version,
                                                      sha=sha)
         except git.GitCommandError:
             return '.dev0+{sha}'.format(sha=sha)
