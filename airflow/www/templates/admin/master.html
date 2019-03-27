@@ -24,6 +24,7 @@
 {% endblock %}
 
 {% if TRACKING_SNIPPET %}
+  {{ super() }}
   {% block head %}
     {{ TRACKING_SNIPPET }}
   {% endblock %}
