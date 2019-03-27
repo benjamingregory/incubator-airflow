@@ -36,7 +36,8 @@ def create_app(config=None, testing=False):
     app = Flask(__name__)
     app.secret_key = configuration.get('webserver', 'SECRET_KEY')
     app.config['LOGIN_DISABLED'] = not configuration.getboolean('webserver', 'AUTHENTICATE')
-
+    app.jinja_env.globals['TRACKING_SNIPPET'] = configuration.get('webserver', 'TRACKING_SNIPPET')
+    
     csrf.init_app(app)
 
     app.config['TESTING'] = testing
