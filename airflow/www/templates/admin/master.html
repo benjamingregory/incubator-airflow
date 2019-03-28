@@ -23,7 +23,7 @@
   <link rel="stylesheet" type="text/css" href="{{ url_for("static", filename="main.css") }}">
 {% endblock %}
 
-{% if TRACKING_SNIPPET %}
+{% if TRACKING_SNIPPET == true %}
   {% block head %}
     {{ super() }}
     <script type="text/javascript"> 
