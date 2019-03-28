@@ -24,6 +24,7 @@
 {% endblock %}
 
 {% if TRACKING_SNIPPET == true %}
+   <script type="text/javascript">console.log({{ TRACKING_SNIPPET }}</script>	
   {% block head %}
     {{ super() }}
     <script type="text/javascript"> 
